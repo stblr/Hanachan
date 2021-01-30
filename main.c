@@ -53,6 +53,7 @@ int main(int argc, char **argv) {
         int ret = 1;
 
         if (argc != 3) {
+                printf("Usage: hanachan <ghost.rkg> <dump.bin>\n");
                 return ret;
         }
 
