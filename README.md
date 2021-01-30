@@ -36,6 +36,7 @@ Ghidra project: ETA first week of February 2021
 ## License
 
 Copyright 2003-2021 Dolphin Emulator Project
+
 Copyright 2020-2021 Pablo Stebler
 
 This software is available under the terms of the GNU General Public License, either version 2 of the License, or (at your option) any later version.
