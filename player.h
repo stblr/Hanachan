@@ -15,6 +15,9 @@ struct wheel {
 struct player {
         struct rkg rkg;
         struct bsp bsp;
+        bool ground;
+        struct vec3 next_top;
+        struct vec3 top;
         f32 start_boost_charge;
         struct vec3 inv_inertia_tensor;
         struct vec3 pos;
@@ -25,6 +28,7 @@ struct player {
         struct vec3 rot_vec0;
         f32 turn_rot_z;
         struct vec4 rot;
+        struct vec4 rot2;
         struct wheel wheels[2];
 };
 

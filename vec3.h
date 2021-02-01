@@ -24,6 +24,8 @@ struct vec3 vec3_proj_unit(struct vec3 v0, struct vec3 v1);
 
 struct vec3 vec3_rej_unit(struct vec3 v0, struct vec3 v1);
 
+struct vec3 vec3_perp_in_plane(struct vec3 v0, struct vec3 v1);
+
 f32 vec3_sq_norm(struct vec3 v);
 
 f32 vec3_norm(struct vec3 v);

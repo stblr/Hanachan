@@ -3,6 +3,7 @@
 #include "wii.h"
 
 #include <float.h>
+#include <math.h>
 #include <stdio.h>
 
 struct vec3 vec3_add(struct vec3 v0, struct vec3 v1) {
@@ -55,6 +56,15 @@ struct vec3 vec3_proj_unit(struct vec3 v0, struct vec3 v1) {
 
 struct vec3 vec3_rej_unit(struct vec3 v0, struct vec3 v1) {
         return vec3_sub(v0, vec3_proj_unit(v0, v1));
+}
+
+struct vec3 vec3_perp_in_plane(struct vec3 v0, struct vec3 v1) {
+        bool colinear = fabsf(vec3_dot(v1, v0)) == 1.0f;
+        if (colinear) {
+                return (struct vec3) { 0.0f, 0.0f, 0.0f };
+        }
+        struct vec3 cross = vec3_cross(v1, v0);
+        return vec3_normalize(vec3_cross(cross, v1));
 }
 
 f32 vec3_sq_norm(struct vec3 v) {

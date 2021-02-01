@@ -23,8 +23,12 @@ struct vec4 vec4_scale(struct vec4 v, f32 s) {
         };
 }
 
+f32 vec4_dot(struct vec4 v0, struct vec4 v1) {
+        return v0.x * v1.x + v0.y * v1.y + v0.z * v1.z + v0.w * v1.w;
+}
+
 struct vec4 vec4_normalize(struct vec4 v) {
-        f32 sq_norm = v.w * v.w + v.x * v.x + v.y * v.y + v.z * v.z;
+        f32 sq_norm = v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w;
         if (sq_norm <= FLT_EPSILON) {
                 return v;
         }

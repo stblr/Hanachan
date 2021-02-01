@@ -27,7 +27,7 @@ static void replay(struct rkg rkg, struct dump dump) {
                         desync = true;
                 }
                 if (!vec3_equals(player.speed0, dump.frames[frame].speed0)) {
-                        printf("SPEED 0 %u\n", frame);
+                        printf("SPEED0 %u\n", frame);
                         vec3_print(player.speed0);
                         vec3_print(dump.frames[frame].speed0);
                         desync = true;

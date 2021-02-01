@@ -62,8 +62,8 @@ static void wheel_init(struct wheel *wheel, u8 idx, struct bsp_wheel bsp_wheel, 
         };
 }
 
-static struct mat34 wheel_get_mat(u8 wheel_idx, struct vec3 player_pos, struct vec4 q) {
-        struct mat34 player_mat = mat34_from_quat_and_pos(q, player_pos);
+static struct mat34 wheel_get_mat(u8 wheel_idx, struct player *player) {
+        struct mat34 player_mat = mat34_from_quat_and_pos(player->rot2, player->pos);
         if (wheel_idx != 0) {
                 return player_mat;
         }
@@ -85,7 +85,7 @@ static bool find_collision(struct vec3 pos, f32 radius, struct vec3 *nor) {
 }
 
 static void wheel_update(struct wheel *wheel, struct player *player, struct vec4 last_q, u16 frame) {
-        struct mat34 wheel_mat = wheel_get_mat(wheel->idx, player->pos, player->rot);
+        struct mat34 wheel_mat = wheel_get_mat(wheel->idx, player);
         struct vec3 topmost_pos = mat34_mul_vec3(wheel_mat, wheel->bsp_wheel.topmost_pos);
 
         struct vec3 bottom = { 0.0f, -1.0f, 0.0f };
@@ -113,6 +113,9 @@ static void wheel_update(struct wheel *wheel, struct player *player, struct vec4
         struct vec3 nor;
         bool collision = find_collision(sphere_pos, radius, &nor);
         if (collision) {
+                player->ground = true;
+                struct vec3 floor_dir = { 0.0f, 1.0f, 0.0f };
+                player->next_top = vec3_add(player->next_top, floor_dir);
                 wheel->pos = vec3_add(wheel->pos, nor);
         }
         wheel->down = vec3_dot(bottom, vec3_sub(wheel->pos, topmost_pos));
@@ -146,7 +149,7 @@ static void wheel_update(struct wheel *wheel, struct player *player, struct vec4
                                 }
                                 struct vec3 cross4_ns = vec3_scale(cross4_n, val * dot2 / dot);
                                 struct vec3 forward = { 0.0f, 0.0f, 1.0f };
-                                forward = quat_rotate_vec3(player->rot, forward);
+                                forward = quat_rotate_vec3(player->rot2, forward);
                                 struct vec3 proj = vec3_proj_unit(cross4_ns, forward);
                                 struct vec3 rej = vec3_sub(cross4_ns, proj);
                                 f32 proj_norm = wii_sqrtf(vec3_sq_norm(proj));
@@ -172,8 +175,12 @@ static void wheel_update(struct wheel *wheel, struct player *player, struct vec4
                                 rej = vec3_normalize(rej);
                                 rej = vec3_scale(rej, rej_norm);
                                 struct vec3 sum = vec3_add(proj, rej);
-                                struct vec3 next_dir = { 0.0f, 0.0f, f32_from_repr(0xbf800001) };
-                                rej = vec3_rej_unit(sum, next_dir);
+                                struct vec3 right = { 1.0f, 0.0f, 0.0f };
+                                right = quat_rotate_vec3(last_q, right);
+                                struct vec3 dir = vec3_cross(right, player->top);
+                                dir = vec3_normalize(dir);
+                                dir = vec3_perp_in_plane(dir, player->top);
+                                rej = vec3_rej_unit(sum, dir);
                                 player->speed0 = vec3_add(player->speed0, rej);
                                 // TODO the part after this line is not always executed, figure out the cond
                                 struct vec3 cross5 = vec3_cross(sphere_pos_rel, sum);
@@ -188,14 +195,15 @@ static void wheel_update(struct wheel *wheel, struct player *player, struct vec4
         struct vec3 last_pos_rel = wheel->last_pos_rel;
         struct vec3 pos_rel = vec3_sub(wheel->pos, topmost_pos);
         wheel->last_pos_rel = pos_rel;
+        // TODO move this up
         if (collision) {
                 f32 down = vec3_dot(bottom, pos_rel);
                 f32 speed = vec3_dot(bottom, vec3_sub(last_pos_rel, pos_rel));
                 struct vec3 acceleration = vec3_scale(bottom, -(wheel->bsp_wheel.distance_suspension * (wheel->bsp_wheel.slack_y - down) + wheel->bsp_wheel.speed_suspension * speed));
                 player->normal_acceleration += acceleration.y;
-                acceleration = quat_inv_rotate_vec3(player->rot, acceleration);
+                acceleration = quat_inv_rotate_vec3(player->rot2, acceleration);
                 struct vec3 topmost_pos_rel = vec3_sub(topmost_pos, player->pos);
-                topmost_pos_rel = quat_inv_rotate_vec3(player->rot, topmost_pos_rel);
+                topmost_pos_rel = quat_inv_rotate_vec3(player->rot2, topmost_pos_rel);
                 struct vec3 cross = vec3_cross(topmost_pos_rel, acceleration);
                 cross.y = 0.0f;
                 player->normal_rot_vec = vec3_add(player->normal_rot_vec, cross);
@@ -225,6 +233,9 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
         *player = (struct player) {
                 .rkg = rkg,
                 .bsp = bsp,
+                .ground = false,
+                .next_top = { 0.0f, 0.0f, 0.0f },
+                .top = { 0.0f, 0.0f, 0.0f },
                 .start_boost_charge = 0.0f,
                 .inv_inertia_tensor = inv_inertia_tensor,
                 .pos = { -14720.0f, 1000.0f + bsp.initial_pos_y, -2954.655f },
@@ -235,6 +246,7 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
                 .rot_vec0 = { 0.0f, 0.0f, 0.0f },
                 .turn_rot_z = 0.0f,
                 .rot = { 0.0f, 1.0f, 0.0f, 0.0f },
+                .rot2 = { 0.0f, 1.0f, 0.0f, 0.0f },
         };
 
         for (u8 i = 0; i < 2; i++) {
@@ -264,17 +276,24 @@ void player_update(struct player *player, u16 frame) {
                         player->turn_rot_z += 0.08f;
                         s = -1.0f;
                 }
-                struct mat34 player_mat = mat34_from_quat_and_pos(player->rot, player->pos);
-                struct vec3 col0 = { player_mat.e00, player_mat.e10, player_mat.e20 };
-                col0 = vec3_scale(col0, s);
-                player->speed0 = vec3_add(player->speed0, col0);
+                if (player->turn_rot_z < -0.6f) {
+                        player->turn_rot_z = -0.6f;
+                } else if (player->turn_rot_z > 0.6f) {
+                        player->turn_rot_z = 0.6f;
+                } else {
+                        struct mat34 player_mat = mat34_from_quat_and_pos(player->rot2, player->pos);
+                        struct vec3 col0 = { player_mat.e00, player_mat.e10, player_mat.e20 };
+                        col0 = vec3_scale(col0, s);
+                        player->speed0 = vec3_add(player->speed0, col0);
+                }
         }
 
-        struct vec3 top = { 0.0f, 1.0f, 0.0f };
-        if (frame >= 2) {
-                top.y = f32_from_repr(0x3f800001);
+        if (player->ground) {
+                player->top = vec3_normalize(player->next_top);
+        } else {
+                player->top = (struct vec3) { 0.0f, 1.0f, 0.0f };
         }
-        player->speed0 = vec3_rej_unit(player->speed0, top);
+        player->speed0 = vec3_rej_unit(player->speed0, player->top);
 
         player->speed0.y += player->normal_acceleration - 1.3f;
         player->normal_acceleration = 0.0f;
@@ -298,6 +317,7 @@ void player_update(struct player *player, u16 frame) {
         player->normal_rot_vec = vec3_scale(vec3_add(tmp, tmp2), 0.5f);
         player->rot_vec0 = vec3_add(player->rot_vec0, player->normal_rot_vec);
         player->rot_vec0.z = 0.0f;
+        player->normal_rot_vec = (struct vec3) { 0.0f, 0.0f, 0.0f };
         struct vec3 rot_vec = vec3_scale(player->rot_vec0, player->bsp.rot_speed);
         f32 start_boost_rot = 0.015f * -player->start_boost_charge;
         rot_vec.x += start_boost_rot;
@@ -308,9 +328,31 @@ void player_update(struct player *player, u16 frame) {
                 player->rot = vec4_add(player->rot, vec4_scale(tmp3, 0.5f));
                 player->rot = vec4_normalize(player->rot);
         }
-        player->rot = vec4_normalize(player->rot);
-        player->normal_rot_vec = (struct vec3) { 0.0f, 0.0f, 0.0f };
 
+        forward = (struct vec3) { 0.0f, 0.0f, 1.0f };
+        forward = quat_rotate_vec3(player->rot, forward);
+        struct vec3 right = vec3_cross(player->top, forward);
+        forward = vec3_cross(right, player->top);
+        forward = vec3_normalize(forward);
+        right = vec3_cross(player->top, forward);
+        struct vec3 top = vec3_cross(forward, right);
+        top = vec3_normalize(top);
+        struct vec3 rot_top = { 0.0f, 1.0f, 0.0f };
+        rot_top = quat_rotate_vec3(player->rot, rot_top);
+        if (vec3_dot(top, rot_top) < 0.9999f) {
+                struct vec4 rot = quat_from_vectors(rot_top, top);
+                struct vec4 prod = quat_mul(rot, player->rot);
+                player->rot = quat_slerp(player->rot, prod, 0.1f);
+        }
+        player->rot = vec4_normalize(player->rot);
+
+        struct vec4 identity = { 0.0f, 0.0f, 0.0f, 1.0f };
+        player->rot2 = quat_mul(identity, player->rot);
+        player->rot2 = quat_mul(player->rot2, identity);
+        player->rot2 = vec4_normalize(player->rot2);
+
+        player->ground = false;
+        player->next_top = (struct vec3) { 0.0f, 0.0f, 0.0f };
         for (u8 i = 0; i < 2; i++) {
                 wheel_update(player->wheels + i, player, last_rot, frame);
         }
