@@ -145,7 +145,7 @@ static bool rkg_parse_input(struct rkg *rkg, u32 size, u8 *data) {
 
         inputs = rkg->inputs;
         for (u16 i = 0; i < trick_input_count; i++) {
-                u8 state = get_u8(ptr) & 0xf;
+                u8 state = get_u8(ptr) >> 4;
                 u16 frame_count = get_u16(ptr) & 0xfff;
                 ptr += 2;
                 if (state & 0x8) { // TODO stronger validation
