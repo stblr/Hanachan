@@ -63,7 +63,8 @@ f32 wii_sqrtf(f32 val) {
         f64 recip_sqrt = ppc_frsqrte(val);
         f32 tmp0 = recip_sqrt * f64_25_bit_mantissa(recip_sqrt);
         f32 tmp1 = recip_sqrt * 0.5f;
-        return tmp1 * (3.0f - tmp0 * val) * val;
+        f32 tmp2 = 3.0f - (f64)tmp0 * val;
+        return tmp1 * tmp2 * val;
 }
 
 f32 wii_sinf(f32 val) {
