@@ -1,6 +1,6 @@
 CFLAGS = -std=c18 -Wall -Wextra -Wpedantic -Werror=vla -O3 -g -flto
 
-all: hanachan
+all: hanachan hanachan-rkrd
 
 hanachan: bsp.o main.o mat34.o player.o quat.o rkg.o rkrd.o util.o vec3.o vec4.o wii.o yaz.o
 	$(CC) $(CFLAGS) $^ -o $@ -lm
@@ -19,6 +19,9 @@ vec4.o: vec4.c vec4.h util.h wii.h
 wii.o: wii.c wii.h util.h wii_tables.h
 yaz.o: yaz.c yaz.h util.h
 
+hanachan-rkrd: rkrd/main.c
+	$(CC) $(CFLAGS) $^ -o $@
+
 .PHONY: clean
 clean:
-	$(RM) hanachan *.o
+	$(RM) hanachan *.o hanachan-rkrd
