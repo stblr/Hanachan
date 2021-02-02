@@ -38,4 +38,8 @@ u8 next_u8(const u8 **data);
 
 u16 next_u16(const u8 **data);
 
+u32 next_u32(const u8 **data);
+
+f32 next_f32(const u8 **data);
+
 u32 pack_u32(u8 b0, u8 b1, u8 b2, u8 b3);

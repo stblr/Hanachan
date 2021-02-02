@@ -103,6 +103,18 @@ u16 next_u16(const u8 **data) {
         return val;
 }
 
+u32 next_u32(const u8 **data) {
+        u32 val = get_u32(*data);
+        *data += 4;
+        return val;
+}
+
+f32 next_f32(const u8 **data) {
+        f32 val = get_f32(*data);
+        *data += 4;
+        return val;
+}
+
 u32 pack_u32(u8 b0, u8 b1, u8 b2, u8 b3) {
         return (b0 << 24) | (b1 << 16) | (b2 << 8) | b3;
 }
