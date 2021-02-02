@@ -15,9 +15,15 @@ struct wheel {
 struct player {
         struct rkg rkg;
         struct bsp bsp;
+        bool wheelie;
+        u8 wheelie_frame;
+        f32 wheelie_rot;
+        f32 wheelie_rot_dec;
         bool ground;
         struct vec3 next_top;
         struct vec3 top;
+        struct vec3 dir;
+        struct vec3 dir_diff;
         f32 start_boost_charge;
         struct vec3 inv_inertia_tensor;
         struct vec3 pos;

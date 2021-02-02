@@ -4,7 +4,7 @@ A reimplementation of the physics engine of Mario Kart Wii, aiming for perfectly
 
 ## Status
 
-At the moment, it is possible to replay a very simple rMC3 ghost for 411 frames (that is, until the actual start of the race).
+At the moment, it is possible to replay the rMC3 Flame Runner BKT for 411 frames (that is, until the actual start of the race).
 
 ## Future plans
 

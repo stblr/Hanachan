@@ -175,19 +175,15 @@ static void wheel_update(struct wheel *wheel, struct player *player, struct vec4
                                 rej = vec3_normalize(rej);
                                 rej = vec3_scale(rej, rej_norm);
                                 struct vec3 sum = vec3_add(proj, rej);
-                                struct vec3 right = { 1.0f, 0.0f, 0.0f };
-                                right = quat_rotate_vec3(last_q, right);
-                                struct vec3 dir = vec3_cross(right, player->top);
-                                dir = vec3_normalize(dir);
-                                dir = vec3_perp_in_plane(dir, player->top);
-                                rej = vec3_rej_unit(sum, dir);
+                                rej = vec3_rej_unit(sum, player->dir);
                                 player->speed0 = vec3_add(player->speed0, rej);
-                                // TODO the part after this line is not always executed, figure out the cond
-                                struct vec3 cross5 = vec3_cross(sphere_pos_rel, sum);
-                                struct vec3 cross5_r = mat33_mul_vec3(rot_mat, cross5);
-                                struct vec3 cross5_rr = quat_inv_rotate_vec3(player->rot, cross5_r);
-                                cross5_rr.y = 0;
-                                player->rot_vec0 = vec3_add(player->rot_vec0, cross5_rr);
+                                if (!player->wheelie && player->wheelie_rot == 0.0f) {
+                                        struct vec3 cross5 = vec3_cross(sphere_pos_rel, sum);
+                                        struct vec3 cross5_r = mat33_mul_vec3(rot_mat, cross5);
+                                        struct vec3 cross5_rr = quat_inv_rotate_vec3(player->rot, cross5_r);
+                                        cross5_rr.y = 0;
+                                        player->rot_vec0 = vec3_add(player->rot_vec0, cross5_rr);
+                                }
                         }
                 }
         }
@@ -206,7 +202,12 @@ static void wheel_update(struct wheel *wheel, struct player *player, struct vec4
                 topmost_pos_rel = quat_inv_rotate_vec3(player->rot2, topmost_pos_rel);
                 struct vec3 cross = vec3_cross(topmost_pos_rel, acceleration);
                 cross.y = 0.0f;
-                player->normal_rot_vec = vec3_add(player->normal_rot_vec, cross);
+                if (player->wheelie_rot != 0.0f) {
+                        cross.x = 0.0f;
+                }
+                if (!player->wheelie) {
+                        player->normal_rot_vec = vec3_add(player->normal_rot_vec, cross);
+                }
         }
 }
 
@@ -233,9 +234,15 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
         *player = (struct player) {
                 .rkg = rkg,
                 .bsp = bsp,
+                .wheelie = false,
+                .wheelie_frame = 0,
+                .wheelie_rot = 0.0f,
+                .wheelie_rot_dec = 0.0f,
                 .ground = false,
                 .next_top = { 0.0f, 0.0f, 0.0f },
                 .top = { 0.0f, 0.0f, 0.0f },
+                .dir = { 0.0f, 0.0f, -1.0f },
+                .dir_diff = { 0.0f, 0.0f, 0.0f },
                 .start_boost_charge = 0.0f,
                 .inv_inertia_tensor = inv_inertia_tensor,
                 .pos = { -14720.0f, 1000.0f + bsp.initial_pos_y, -2954.655f },
@@ -263,13 +270,34 @@ void player_update(struct player *player, u16 frame) {
                         player->start_boost_charge *= 0.96f;
                 }
 
+                if (player->rkg.inputs[frame - 172] >> 5 & 1) {
+                        player->wheelie = true;
+                }
+                if (player->wheelie) {
+                        player->wheelie_frame++;
+                        if (player->wheelie_frame >= 15) {
+                                player->wheelie = false;
+                        } else {
+                                player->wheelie_rot += 0.01f;
+                                if (player->wheelie_rot > 0.07f) {
+                                        player->wheelie_rot = 0.07f;
+                                }
+                        }
+                } else if (player->wheelie_rot > 0.0f) {
+                        player->wheelie_rot_dec -= 0.001f;
+                        player->wheelie_rot += player->wheelie_rot_dec;
+                        if (player->wheelie_rot < 0.0f) {
+                                player->wheelie_rot = 0.0f;
+                        }
+                }
+
                 i8 discrete_stick_x = (player->rkg.inputs[frame - 172] >> 12);
                 f32 stick_x = (discrete_stick_x - 7.0f) / 7.0f;
                 f32 s;
-                if (stick_x < -0.2f) {
+                if (stick_x < -0.2f && !player->wheelie) {
                         player->turn_rot_z -= 0.08f;
                         s = 1.0f;
-                } else if (stick_x <= 0.2f) {
+                } else if (stick_x <= 0.2f || player->wheelie) {
                         player->turn_rot_z *= 0.9f;
                         s = 0.0f;
                 } else {
@@ -311,6 +339,9 @@ void player_update(struct player *player, u16 frame) {
         player->speed = vec3_scale(vec3_normalize(player->speed0), speed_norm);
         player->pos = vec3_add(player->pos, player->speed);
 
+        if (player->wheelie) {
+                player->rot_vec0.x *= 0.9f;
+        }
         player->rot_vec0 = vec3_scale(player->rot_vec0, 0.98f);
         struct vec3 tmp = vec3_mul(player->inv_inertia_tensor, player->normal_rot_vec);
         struct vec3 tmp2 = vec3_mul(player->inv_inertia_tensor, vec3_add(player->normal_rot_vec, tmp));
@@ -318,10 +349,18 @@ void player_update(struct player *player, u16 frame) {
         player->rot_vec0 = vec3_add(player->rot_vec0, player->normal_rot_vec);
         player->rot_vec0.z = 0.0f;
         player->normal_rot_vec = (struct vec3) { 0.0f, 0.0f, 0.0f };
-        struct vec3 rot_vec = vec3_scale(player->rot_vec0, player->bsp.rot_speed);
+
+        struct vec3 rot_vec2 = { 0.0f, 0.0f, 0.0f };
+        struct vec3 top = { 0.0f, 1.0f, 0.0f };
+        f32 dot = vec3_dot(player->dir, top);
+        rot_vec2.x -= player->wheelie_rot * (1.0f - fabsf(dot));
+
         f32 start_boost_rot = 0.015f * -player->start_boost_charge;
-        rot_vec.x += start_boost_rot;
-        rot_vec.z += 0.05f * player->turn_rot_z;
+        rot_vec2.x += start_boost_rot;
+        rot_vec2.z += 0.05f * player->turn_rot_z;
+
+        struct vec3 rot_vec = vec3_scale(player->rot_vec0, player->bsp.rot_speed);
+        rot_vec = vec3_add(rot_vec, rot_vec2);
         struct vec4 last_rot = player->rot;
         if (vec3_sq_norm(rot_vec) > FLT_EPSILON) {
                 struct vec4 tmp3 = quat_mul_from_vec3(player->rot, rot_vec);
@@ -335,7 +374,7 @@ void player_update(struct player *player, u16 frame) {
         forward = vec3_cross(right, player->top);
         forward = vec3_normalize(forward);
         right = vec3_cross(player->top, forward);
-        struct vec3 top = vec3_cross(forward, right);
+        top = vec3_cross(forward, right);
         top = vec3_normalize(top);
         struct vec3 rot_top = { 0.0f, 1.0f, 0.0f };
         rot_top = quat_rotate_vec3(player->rot, rot_top);
@@ -350,6 +389,22 @@ void player_update(struct player *player, u16 frame) {
         player->rot2 = quat_mul(identity, player->rot);
         player->rot2 = quat_mul(player->rot2, identity);
         player->rot2 = vec4_normalize(player->rot2);
+
+        right = (struct vec3) { 1.0f, 0.0f, 0.0f };
+        right = quat_rotate_vec3(last_rot, right);
+        struct vec3 next_dir = vec3_cross(right, player->top);
+        next_dir = vec3_normalize(next_dir);
+        next_dir = vec3_perp_in_plane(next_dir, player->top);
+        struct vec3 next_dir_diff = vec3_sub(next_dir, player->dir);
+        if (vec3_sq_norm(next_dir_diff) <= FLT_EPSILON) {
+                player->dir = next_dir;
+                player->dir_diff = (struct vec3) { 0.0f, 0.0f, 0.0f };
+        } else {
+                next_dir_diff = vec3_add(player->dir_diff, vec3_scale(next_dir_diff, 0.7f));
+                player->dir = vec3_add(player->dir, next_dir_diff);
+                player->dir = vec3_normalize(player->dir);
+                player->dir_diff = vec3_scale(next_dir_diff, 0.1f);
+        }
 
         player->ground = false;
         player->next_top = (struct vec3) { 0.0f, 0.0f, 0.0f };
