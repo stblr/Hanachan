@@ -15,6 +15,10 @@ At the moment, it is possible to replay the rMC3 Flame Runner BKT for 411 frames
 * Graphics reimplementation using Vulkan
 * Full game reimplementation (maybe)
 
+## Running the program
+
+Two files have to be supplied as cli arguments: a ghost file in the rkg format, and a race dump file in the custom rkrd format, which contains important physics variables for each frame. The program replays the ghost and compares it to the dump, and as soon as there is a difference for any of the variables, it is printed and the execution is stopped. Sample files are provided in the data directory.
+
 ## Contributing
 
 At the moment, the codebase is evolving very fast and there is still some code I haven't integrated yet, so if you want to contribute non-trivial features, please tell me about it so we can properly coordinate.
