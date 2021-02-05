@@ -21,6 +21,16 @@ struct vec4 quat_from_vectors(struct vec3 from, struct vec3 to) {
         };
 }
 
+struct vec4 quat_from_axis_angle(struct vec3 axis, f32 angle) {
+        f32 half = 0.5f * angle;
+        return (struct vec4) {
+                wii_sinf(half) * axis.x,
+                wii_sinf(half) * axis.y,
+                wii_sinf(half) * axis.z,
+                wii_cosf(half),
+        };
+}
+
 static struct vec4 quat_invert(struct vec4 q) {
         return (struct vec4) {
                 -q.x,

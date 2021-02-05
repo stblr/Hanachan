@@ -248,6 +248,7 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
                 .pos = { -14720.0f, 1000.0f + bsp.initial_pos_y, -2954.655f },
                 .normal_acceleration = 0.0f,
                 .speed0 = { 0.0f, 0.0f, 0.0f },
+                .speed1_norm = 0.0f,
                 .speed = { 0.0f, 0.0f, 0.0f },
                 .normal_rot_vec = { 0.0f, 0.0f, 0.0f },
                 .rot_vec0 = { 0.0f, 0.0f, 0.0f },
@@ -316,12 +317,31 @@ void player_update(struct player *player, u16 frame) {
                 }
         }
 
+        struct vec3 right = { 1.0f, 0.0f, 0.0f };
+        right = quat_rotate_vec3(player->rot, right);
+        struct vec3 next_dir = vec3_cross(right, player->top);
+        next_dir = vec3_normalize(next_dir);
+        next_dir = vec3_perp_in_plane(next_dir, player->top);
+        struct vec3 next_dir_diff = vec3_sub(next_dir, player->dir);
+        if (vec3_sq_norm(next_dir_diff) <= FLT_EPSILON) {
+                player->dir = next_dir;
+                player->dir_diff = (struct vec3) { 0.0f, 0.0f, 0.0f };
+        } else {
+                next_dir_diff = vec3_add(player->dir_diff, vec3_scale(next_dir_diff, 0.7f));
+                player->dir = vec3_add(player->dir, next_dir_diff);
+                player->dir = vec3_normalize(player->dir);
+                player->dir_diff = vec3_scale(next_dir_diff, 0.1f);
+        }
+
         if (player->ground) {
                 player->top = vec3_normalize(player->next_top);
         } else {
                 player->top = (struct vec3) { 0.0f, 1.0f, 0.0f };
         }
-        player->speed0 = vec3_rej_unit(player->speed0, player->top);
+
+        if (frame < 411) {
+                player->speed0 = vec3_rej_unit(player->speed0, player->top);
+        }
 
         player->speed0.y += player->normal_acceleration - 1.3f;
         player->normal_acceleration = 0.0f;
@@ -335,8 +355,18 @@ void player_update(struct player *player, u16 frame) {
                 player->speed0 = vec3_rej_unit(player->speed0, vec3_normalize(forward));
         }
 
-        f32 speed_norm = vec3_norm(player->speed0);
-        player->speed = vec3_scale(vec3_normalize(player->speed0), speed_norm);
+        if (frame >= 411) {
+                player->speed1_norm += 3.0f;
+        }
+        struct vec3 speed1_dir = vec3_perp_in_plane(player->dir, player->top);
+        right = vec3_cross(player->top, player->dir);
+        f32 deg_to_rad = M_PI / 180.0;
+        speed1_dir = mat34_mul_vec3(mat34_from_axis_angle(right, 0.5f * deg_to_rad), speed1_dir);
+        struct vec3 speed1 = vec3_scale(speed1_dir, player->speed1_norm);
+
+        player->speed = vec3_add(player->speed0, speed1);
+        f32 speed_norm = vec3_norm(player->speed);
+        player->speed = vec3_scale(vec3_normalize(player->speed), speed_norm);
         player->pos = vec3_add(player->pos, player->speed);
 
         if (player->wheelie) {
@@ -370,7 +400,7 @@ void player_update(struct player *player, u16 frame) {
 
         forward = (struct vec3) { 0.0f, 0.0f, 1.0f };
         forward = quat_rotate_vec3(player->rot, forward);
-        struct vec3 right = vec3_cross(player->top, forward);
+        right = vec3_cross(player->top, forward);
         forward = vec3_cross(right, player->top);
         forward = vec3_normalize(forward);
         right = vec3_cross(player->top, forward);
@@ -389,22 +419,6 @@ void player_update(struct player *player, u16 frame) {
         player->rot2 = quat_mul(identity, player->rot);
         player->rot2 = quat_mul(player->rot2, identity);
         player->rot2 = vec4_normalize(player->rot2);
-
-        right = (struct vec3) { 1.0f, 0.0f, 0.0f };
-        right = quat_rotate_vec3(last_rot, right);
-        struct vec3 next_dir = vec3_cross(right, player->top);
-        next_dir = vec3_normalize(next_dir);
-        next_dir = vec3_perp_in_plane(next_dir, player->top);
-        struct vec3 next_dir_diff = vec3_sub(next_dir, player->dir);
-        if (vec3_sq_norm(next_dir_diff) <= FLT_EPSILON) {
-                player->dir = next_dir;
-                player->dir_diff = (struct vec3) { 0.0f, 0.0f, 0.0f };
-        } else {
-                next_dir_diff = vec3_add(player->dir_diff, vec3_scale(next_dir_diff, 0.7f));
-                player->dir = vec3_add(player->dir, next_dir_diff);
-                player->dir = vec3_normalize(player->dir);
-                player->dir_diff = vec3_scale(next_dir_diff, 0.1f);
-        }
 
         player->ground = false;
         player->next_top = (struct vec3) { 0.0f, 0.0f, 0.0f };

@@ -22,6 +22,8 @@ struct mat34 mat34_from_angles_and_pos(struct vec3 angles, struct vec3 pos);
 
 struct mat34 mat34_from_quat_and_pos(struct vec4 q, struct vec3 pos);
 
+struct mat34 mat34_from_axis_angle(struct vec3 axis, f32 angle);
+
 struct mat34 mat34_transpose(struct mat34 m);
 
 struct mat34 mat34_mul(struct mat34 m0, struct mat34 m1);

@@ -1,5 +1,6 @@
 #include "mat34.h"
 
+#include "quat.h"
 #include "wii.h"
 
 struct mat34 mat34_from_angles_and_pos(struct vec3 angles, struct vec3 pos) {
@@ -42,6 +43,11 @@ struct mat34 mat34_from_quat_and_pos(struct vec4 q, struct vec3 pos) {
                 1.0f - 2.0f * q.x * q.x - 2.0f * q.y * q.y,
                 pos.z,
         };
+}
+
+struct mat34 mat34_from_axis_angle(struct vec3 axis, f32 angle) {
+        struct vec4 q = quat_from_axis_angle(axis, angle);
+        return mat34_from_quat_and_pos(q, (struct vec3) { 0.0f, 0.0f, 0.0f });
 }
 
 struct mat34 mat34_transpose(struct mat34 m) {

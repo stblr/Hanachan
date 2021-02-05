@@ -38,10 +38,10 @@ static void replay(struct rkg rkg, struct rkrd rkrd) {
                         vec3_print(rkrd.frames[frame].speed0);
                         desync = true;
                 }
-                if (0.0f != rkrd.frames[frame].speed1_norm) {
+                if (player.speed1_norm != rkrd.frames[frame].speed1_norm) {
                         printf("SPEED1_NORM %u\n", frame);
-                        printf("%f ", 0.0f);
-                        printf("0x%x\n", f32_to_repr(0.0f));
+                        printf("%f ", player.speed1_norm);
+                        printf("0x%x\n", f32_to_repr(player.speed1_norm));
                         printf("%f ", rkrd.frames[frame].speed1_norm);
                         printf("0x%x\n", f32_to_repr(rkrd.frames[frame].speed1_norm));
                 }

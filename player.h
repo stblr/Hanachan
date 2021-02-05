@@ -29,6 +29,7 @@ struct player {
         struct vec3 pos;
         f32 normal_acceleration;
         struct vec3 speed0;
+        f32 speed1_norm;
         struct vec3 speed;
         struct vec3 normal_rot_vec;
         struct vec3 rot_vec0;

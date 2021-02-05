@@ -7,9 +7,8 @@ hanachan: bsp.o main.o mat34.o player.o quat.o rkg.o rkrd.o util.o vec3.o vec4.o
 
 bsp.o: bsp.c bsp.h vec3.h util.h
 main.o: main.c rkrd.h vec3.h util.h vec4.h player.h bsp.h rkg.h
-mat34.o: mat34.c mat34.h vec3.h util.h vec4.h wii.h
-player.o: player.c player.h bsp.h vec3.h util.h rkg.h vec4.h mat34.h \
- quat.h wii.h
+mat34.o: mat34.c mat34.h vec3.h util.h vec4.h quat.h wii.h
+player.o: player.c player.h bsp.h vec3.h util.h rkg.h vec4.h mat34.h quat.h wii.h
 quat.o: quat.c quat.h vec3.h util.h vec4.h wii.h
 rkg.o: rkg.c rkg.h util.h yaz.h
 rkrd.o: rkrd.c rkrd.h vec3.h util.h vec4.h
