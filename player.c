@@ -84,7 +84,7 @@ static bool find_collision(struct vec3 pos, f32 radius, struct vec3 *nor) {
         return true;
 }
 
-static void wheel_update(struct wheel *wheel, struct player *player, struct vec4 last_q, u16 frame) {
+static void wheel_update(struct wheel *wheel, struct player *player, struct vec4 last_q, u32 frame) {
         struct mat34 wheel_mat = wheel_get_mat(wheel->idx, player);
         struct vec3 topmost_pos = mat34_mul_vec3(wheel_mat, wheel->bsp_wheel.topmost_pos);
 
@@ -262,7 +262,7 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
         }
 }
 
-void player_update(struct player *player, u16 frame) {
+void player_update(struct player *player, u32 frame) {
         if (frame >= 172) {
                 bool accelerate = player->rkg.inputs[frame - 172] & 1;
                 if (accelerate) {

@@ -41,4 +41,4 @@ struct player {
 
 void player_init(struct player *player, struct rkg rkg, struct bsp bsp);
 
-void player_update(struct player *player, u16 frame);
+void player_update(struct player *player, u32 frame);
