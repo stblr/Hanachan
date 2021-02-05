@@ -25,6 +25,7 @@ struct player {
         struct vec3 dir;
         struct vec3 dir_diff;
         f32 start_boost_charge;
+        f32 standstill_boost_rot;
         struct vec3 inv_inertia_tensor;
         struct vec3 pos;
         f32 normal_acceleration;

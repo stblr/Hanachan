@@ -244,6 +244,7 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
                 .dir = { 0.0f, 0.0f, -1.0f },
                 .dir_diff = { 0.0f, 0.0f, 0.0f },
                 .start_boost_charge = 0.0f,
+                .standstill_boost_rot = 0.0f,
                 .inv_inertia_tensor = inv_inertia_tensor,
                 .pos = { -14720.0f, 1000.0f + bsp.initial_pos_y, -2954.655f },
                 .normal_acceleration = 0.0f,
@@ -385,8 +386,12 @@ void player_update(struct player *player, u32 frame) {
         f32 dot = vec3_dot(player->dir, top);
         rot_vec2.x -= player->wheelie_rot * (1.0f - fabsf(dot));
 
-        f32 start_boost_rot = 0.015f * -player->start_boost_charge;
-        rot_vec2.x += start_boost_rot;
+        if (frame < 411) {
+                player->standstill_boost_rot = 0.015f * -player->start_boost_charge;
+        } else {
+                player->standstill_boost_rot += 0.2f * (-3.0f * 0.15f * 0.08f - player->standstill_boost_rot);
+        }
+        rot_vec2.x += player->standstill_boost_rot;
         rot_vec2.z += 0.05f * player->turn_rot_z;
 
         struct vec3 rot_vec = vec3_scale(player->rot_vec0, player->bsp.rot_speed);
