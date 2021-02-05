@@ -123,6 +123,7 @@ static void wheel_update(struct wheel *wheel, struct player *player, struct vec4
 
         if (collision) {
                 struct vec3 speed = vec3_sub(wheel->pos, last_pos);
+                speed = vec3_sub(speed, player->speed1);
                 struct vec3 unk0 = { 0.0f, 10.0f * -1.3f, 0.0f };
                 struct vec3 speed2 = vec3_add(speed, unk0);
                 struct vec3 nor = { 0.0f, 1.0f, 0.0f };
@@ -250,6 +251,7 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
                 .normal_acceleration = 0.0f,
                 .speed0 = { 0.0f, 0.0f, 0.0f },
                 .speed1_norm = 0.0f,
+                .speed1 = { 0.0f, 0.0f, 0.0f },
                 .speed = { 0.0f, 0.0f, 0.0f },
                 .normal_rot_vec = { 0.0f, 0.0f, 0.0f },
                 .rot_vec0 = { 0.0f, 0.0f, 0.0f },
@@ -362,10 +364,10 @@ void player_update(struct player *player, u32 frame) {
         struct vec3 speed1_dir = vec3_perp_in_plane(player->dir, player->top);
         right = vec3_cross(player->top, player->dir);
         f32 deg_to_rad = M_PI / 180.0;
-        speed1_dir = mat34_mul_vec3(mat34_from_axis_angle(right, 0.5f * deg_to_rad), speed1_dir);
-        struct vec3 speed1 = vec3_scale(speed1_dir, player->speed1_norm);
+        speed1_dir = mat33_mul_vec3(mat34_from_axis_angle(right, 0.5f * deg_to_rad), speed1_dir);
+        player->speed1 = vec3_scale(speed1_dir, player->speed1_norm);
 
-        player->speed = vec3_add(player->speed0, speed1);
+        player->speed = vec3_add(player->speed0, player->speed1);
         f32 speed_norm = vec3_norm(player->speed);
         player->speed = vec3_scale(vec3_normalize(player->speed), speed_norm);
         player->pos = vec3_add(player->pos, player->speed);
