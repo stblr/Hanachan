@@ -375,6 +375,7 @@ void player_update(struct player *player, u32 frame) {
                 player->speed0 = vec3_rej_unit(player->speed0, vec3_normalize(forward));
         }
 
+        f32 last_speed1_norm = player->speed1_norm;
         if (frame >= 411) {
                 player->speed1_norm += 3.0f;
                 f32 soft_speed_limit = 1.2f;
@@ -417,7 +418,8 @@ void player_update(struct player *player, u32 frame) {
         if (frame < 411) {
                 player->standstill_boost_rot = 0.015f * -player->start_boost_charge;
         } else {
-                player->standstill_boost_rot += 0.2f * (-3.0f * 0.15f * 0.08f - player->standstill_boost_rot);
+                f32 acceleration = player->speed1_norm - last_speed1_norm;
+                player->standstill_boost_rot += 0.2f * (-acceleration * 0.15f * 0.08f - player->standstill_boost_rot);
         }
         rot_vec2.x += player->standstill_boost_rot;
         rot_vec2.z += 0.05f * player->turn_rot_z;
