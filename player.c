@@ -281,6 +281,7 @@ void player_update(struct player *player, u32 frame) {
                         player->wheelie_frame++;
                         if (player->wheelie_frame >= 15) {
                                 player->wheelie = false;
+                                player->wheelie_frame = 0;
                         } else {
                                 player->wheelie_rot += 0.01f;
                                 if (player->wheelie_rot > 0.07f) {
