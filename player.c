@@ -377,6 +377,15 @@ void player_update(struct player *player, u32 frame) {
 
         if (frame >= 411) {
                 player->speed1_norm += 3.0f;
+                f32 soft_speed_limit = 1.2f;
+                if (player->wheelie) {
+                        soft_speed_limit += 0.15f;
+                }
+                f32 base_speed = 82.95f + 1.06f; // TODO stop hardcoding fr + fk
+                soft_speed_limit *= base_speed;
+                if (player->speed1_norm > soft_speed_limit) {
+                        player->speed1_norm = soft_speed_limit;
+                }
         }
         struct vec3 speed1_dir = vec3_perp_in_plane(player->dir, player->top);
         right = vec3_cross(player->top, player->dir);
