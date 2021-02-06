@@ -267,6 +267,20 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
         }
 }
 
+static bool should_cancel_wheelie(struct player *player) {
+        if (player->wheelie_frame < 15) {
+                return false;
+        }
+
+        if (player->wheelie_frame > 180) {
+                return true;
+        }
+
+        f32 base_speed = 82.95f + 1.06f; // TODO stop hardcoding fr + fk
+        f32 speed_ratio = player->speed1_norm / base_speed;
+        return player->speed1_norm < 0.0f || speed_ratio < 0.3f;
+}
+
 void player_update(struct player *player, u32 frame) {
         if (frame >= 172) {
                 bool accelerate = player->rkg.inputs[frame - 172] & 1;
@@ -281,7 +295,7 @@ void player_update(struct player *player, u32 frame) {
                 }
                 if (player->wheelie) {
                         player->wheelie_frame++;
-                        if (player->wheelie_frame >= 15) {
+                        if (should_cancel_wheelie(player)) {
                                 player->wheelie = false;
                                 player->wheelie_frame = 0;
                         } else {
