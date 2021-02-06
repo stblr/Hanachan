@@ -197,7 +197,9 @@ static void wheel_update(struct wheel *wheel, struct player *player, struct vec4
                 f32 down = vec3_dot(bottom, pos_rel);
                 f32 speed = vec3_dot(bottom, vec3_sub(last_pos_rel, pos_rel));
                 struct vec3 acceleration = vec3_scale(bottom, -(wheel->bsp_wheel.distance_suspension * (wheel->bsp_wheel.slack_y - down) + wheel->bsp_wheel.speed_suspension * speed));
-                player->normal_acceleration += acceleration.y;
+                if (player->speed0.y < 5.0f) {
+                        player->normal_acceleration += acceleration.y;
+                }
                 acceleration = quat_inv_rotate_vec3(player->rot2, acceleration);
                 struct vec3 topmost_pos_rel = vec3_sub(topmost_pos, player->pos);
                 topmost_pos_rel = quat_inv_rotate_vec3(player->rot2, topmost_pos_rel);
