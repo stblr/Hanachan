@@ -15,6 +15,7 @@ struct wheel {
 struct player {
         struct rkg rkg;
         struct bsp bsp;
+        f32 turn;
         bool wheelie;
         u8 wheelie_frame;
         f32 wheelie_rot;

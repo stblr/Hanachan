@@ -237,6 +237,7 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
         *player = (struct player) {
                 .rkg = rkg,
                 .bsp = bsp,
+                .turn = 0.0f,
                 .wheelie = false,
                 .wheelie_frame = 0,
                 .wheelie_rot = 0.0f,
@@ -353,6 +354,13 @@ void player_update(struct player *player, u32 frame) {
                 player->dir_diff = vec3_scale(next_dir_diff, 0.1f);
         }
 
+        if (frame >= 411) {
+                i8 discrete_stick_x = (player->rkg.inputs[frame - 172] >> 12);
+                f32 stick_x = (discrete_stick_x - 7.0f) / 7.0f;
+                f32 reactivity = 0.88f;
+                player->turn = reactivity * -stick_x + (1.0f - reactivity) * player->turn;
+        }
+
         if (player->ground) {
                 player->top = vec3_normalize(player->next_top);
         } else {
@@ -414,6 +422,13 @@ void player_update(struct player *player, u32 frame) {
         struct vec3 top = { 0.0f, 1.0f, 0.0f };
         f32 dot = vec3_dot(player->dir, top);
         rot_vec2.x -= player->wheelie_rot * (1.0f - fabsf(dot));
+
+        f32 turn = player->turn * 0.0216f;
+        turn *= 0.5f;
+        if (player->wheelie) {
+                turn *= 0.2f;
+        }
+        rot_vec2.y += turn;
 
         if (frame < 411) {
                 player->standstill_boost_rot = 0.015f * -player->start_boost_charge;
