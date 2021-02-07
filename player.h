@@ -27,10 +27,12 @@ struct player {
         struct vec3 dir_diff;
         f32 start_boost_charge;
         f32 standstill_boost_rot;
+        u8 mt_boost;
         struct vec3 inv_inertia_tensor;
         struct vec3 pos;
         f32 normal_acceleration;
         struct vec3 speed0;
+        f32 soft_speed_limit;
         f32 speed1_norm;
         struct vec3 speed1;
         struct vec3 speed;

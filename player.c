@@ -249,10 +249,12 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
                 .dir_diff = { 0.0f, 0.0f, 0.0f },
                 .start_boost_charge = 0.0f,
                 .standstill_boost_rot = 0.0f,
+                .mt_boost = 0,
                 .inv_inertia_tensor = inv_inertia_tensor,
                 .pos = { -14720.0f, 1000.0f + bsp.initial_pos_y, -2954.655f },
                 .normal_acceleration = 0.0f,
                 .speed0 = { 0.0f, 0.0f, 0.0f },
+                .soft_speed_limit = 0.0f,
                 .speed1_norm = 0.0f,
                 .speed1 = { 0.0f, 0.0f, 0.0f },
                 .speed = { 0.0f, 0.0f, 0.0f },
@@ -289,6 +291,10 @@ void player_update(struct player *player, u32 frame) {
                         player->start_boost_charge += 0.02f - (0.02f - 0.002f) * player->start_boost_charge;
                 } else {
                         player->start_boost_charge *= 0.96f;
+                }
+
+                if (frame == 411) {
+                        player->mt_boost = 70;
                 }
 
                 if (player->rkg.inputs[frame - 172] >> 5 & 1) {
@@ -384,18 +390,25 @@ void player_update(struct player *player, u32 frame) {
         }
 
         f32 last_speed1_norm = player->speed1_norm;
-        if (frame >= 411) {
+        f32 next_soft_speed_limit = 1.0f;
+        if (player->mt_boost) {
                 player->speed1_norm += 3.0f;
-                f32 soft_speed_limit = 1.2f;
-                if (player->wheelie) {
-                        soft_speed_limit += 0.15f;
-                }
-                f32 base_speed = 82.95f + 1.06f; // TODO stop hardcoding fr + fk
-                soft_speed_limit *= base_speed;
-                if (player->speed1_norm > soft_speed_limit) {
-                        player->speed1_norm = soft_speed_limit;
-                }
+                next_soft_speed_limit = 1.2f;
+                player->mt_boost--;
         }
+        if (player->wheelie) {
+                next_soft_speed_limit += 0.15f;
+        }
+        f32 base_speed = 82.95f + 1.06f; // TODO stop hardcoding fr + fk
+        next_soft_speed_limit *= base_speed;
+        player->soft_speed_limit -= 3.0f;
+        if (next_soft_speed_limit > player->soft_speed_limit) {
+                player->soft_speed_limit = next_soft_speed_limit;
+        }
+        if (player->speed1_norm > player->soft_speed_limit) {
+                player->speed1_norm = player->soft_speed_limit;
+        }
+
         struct vec3 speed1_dir = vec3_perp_in_plane(player->dir, player->top);
         right = vec3_cross(player->top, player->dir);
         f32 deg_to_rad = M_PI / 180.0;
