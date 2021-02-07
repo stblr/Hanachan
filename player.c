@@ -389,6 +389,9 @@ void player_update(struct player *player, u32 frame) {
                 player->speed0 = vec3_rej_unit(player->speed0, vec3_normalize(forward));
         }
 
+        if (!player->mt_boost) {
+                player->speed1_norm *= 0.9924f + (1.0f - 0.9924f) * (1.0f - fabsf(player->turn));
+        }
         f32 last_speed1_norm = player->speed1_norm;
         f32 next_soft_speed_limit = 1.0f;
         if (player->mt_boost) {
