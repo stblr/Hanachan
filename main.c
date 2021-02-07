@@ -5,11 +5,14 @@
 #include <stdio.h>
 
 static void replay(struct rkg rkg, struct rkrd rkrd) {
+        struct stats stats;
+        stats_get(&stats);
+
         struct bsp bsp;
         bsp_get(&bsp);
 
         struct player player;
-        player_init(&player, rkg, bsp);
+        player_init(&player, rkg, stats, bsp);
 
         u32 frame_count = rkg.frame_count + 172;
         if (frame_count > rkrd.frame_count) {

@@ -2,6 +2,7 @@
 
 #include "bsp.h"
 #include "rkg.h"
+#include "stats.h"
 #include "vec4.h"
 
 struct wheel {
@@ -14,6 +15,7 @@ struct wheel {
 
 struct player {
         struct rkg rkg;
+        struct stats stats;
         struct bsp bsp;
         f32 turn;
         bool wheelie;
@@ -44,6 +46,6 @@ struct player {
         struct wheel wheels[2];
 };
 
-void player_init(struct player *player, struct rkg rkg, struct bsp bsp);
+void player_init(struct player *player, struct rkg rkg, struct stats stats, struct bsp bsp);
 
 void player_update(struct player *player, u32 frame);

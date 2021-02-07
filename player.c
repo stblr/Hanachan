@@ -214,7 +214,7 @@ static void wheel_update(struct wheel *wheel, struct player *player, struct vec4
         }
 }
 
-void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
+void player_init(struct player *player, struct rkg rkg, struct stats stats, struct bsp bsp) {
         f32 masses[2] = { 1.0f / 12.0f, 1.0f };
         struct vec3 inertia_tensors[2];
         for (u8 i = 0; i < 2; i++) {
@@ -236,6 +236,7 @@ void player_init(struct player *player, struct rkg rkg, struct bsp bsp) {
 
         *player = (struct player) {
                 .rkg = rkg,
+                .stats = stats,
                 .bsp = bsp,
                 .turn = 0.0f,
                 .wheelie = false,
@@ -279,8 +280,7 @@ static bool should_cancel_wheelie(struct player *player) {
                 return true;
         }
 
-        f32 base_speed = 82.95f + 1.06f; // TODO stop hardcoding fr + fk
-        f32 speed_ratio = player->speed1_norm / base_speed;
+        f32 speed_ratio = player->speed1_norm / player->stats.base_speed;
         return player->speed1_norm < 0.0f || speed_ratio < 0.3f;
 }
 
@@ -363,7 +363,7 @@ void player_update(struct player *player, u32 frame) {
         if (frame >= 411) {
                 i8 discrete_stick_x = (player->rkg.inputs[frame - 172] >> 12);
                 f32 stick_x = (discrete_stick_x - 7.0f) / 7.0f;
-                f32 reactivity = 0.88f;
+                f32 reactivity = player->stats.handling_reactivity;
                 player->turn = reactivity * -stick_x + (1.0f - reactivity) * player->turn;
         }
 
@@ -390,7 +390,8 @@ void player_update(struct player *player, u32 frame) {
         }
 
         if (!player->mt_boost) {
-                player->speed1_norm *= 0.9924f + (1.0f - 0.9924f) * (1.0f - fabsf(player->turn));
+                f32 t = player->stats.handling_speed_factor;
+                player->speed1_norm *= t + (1.0f - t) * (1.0f - fabsf(player->turn));
         }
         f32 last_speed1_norm = player->speed1_norm;
         f32 next_soft_speed_limit = 1.0f;
@@ -402,8 +403,7 @@ void player_update(struct player *player, u32 frame) {
         if (player->wheelie) {
                 next_soft_speed_limit += 0.15f;
         }
-        f32 base_speed = 82.95f + 1.06f; // TODO stop hardcoding fr + fk
-        next_soft_speed_limit *= base_speed;
+        next_soft_speed_limit *= player->stats.base_speed;
         player->soft_speed_limit -= 3.0f;
         if (next_soft_speed_limit > player->soft_speed_limit) {
                 player->soft_speed_limit = next_soft_speed_limit;
@@ -439,7 +439,7 @@ void player_update(struct player *player, u32 frame) {
         f32 dot = vec3_dot(player->dir, top);
         rot_vec2.x -= player->wheelie_rot * (1.0f - fabsf(dot));
 
-        f32 turn = player->turn * 0.0216f;
+        f32 turn = player->turn * player->stats.handling_tightness;
         turn *= 0.5f;
         if (player->wheelie) {
                 turn *= 0.2f;
