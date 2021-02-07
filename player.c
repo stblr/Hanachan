@@ -450,6 +450,7 @@ void player_update(struct player *player, u32 frame) {
                 player->standstill_boost_rot = 0.015f * -player->start_boost_charge;
         } else {
                 f32 acceleration = player->speed1_norm - last_speed1_norm;
+                acceleration = fminf(fmaxf(-3.0f, acceleration), 3.0f);
                 player->standstill_boost_rot += 0.2f * (-acceleration * 0.15f * 0.08f - player->standstill_boost_rot);
         }
         rot_vec2.x += player->standstill_boost_rot;
