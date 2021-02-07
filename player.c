@@ -284,6 +284,24 @@ static bool should_cancel_wheelie(struct player *player) {
         return player->speed1_norm < 0.0f || speed_ratio < 0.3f;
 }
 
+static f32 compute_non_boost_acceleration(struct player *player) {
+        f32 t = player->speed1_norm / player->soft_speed_limit;
+        if (t < 0.0f) {
+                return 1.0f;
+        }
+
+        f32 *ts = player->stats.standard_acceleration_ts;
+        f32 *as = player->stats.standard_acceleration_as;
+
+        for (u8 i = 0; i < 3; i++) {
+                if (t < ts[i + 1]) {
+                        return as[i] + (as[i + 1] - as[i]) / (ts[i + 1] - ts[i]) * (t - ts[i]);
+                }
+        }
+
+        return as[3];
+}
+
 void player_update(struct player *player, u32 frame) {
         if (frame >= 172) {
                 bool accelerate = player->rkg.inputs[frame - 172] & 1;
@@ -399,6 +417,8 @@ void player_update(struct player *player, u32 frame) {
                 player->speed1_norm += 3.0f;
                 next_soft_speed_limit = 1.2f;
                 player->mt_boost--;
+        } else if (frame >= 411) {
+                player->speed1_norm += compute_non_boost_acceleration(player);
         }
         if (player->wheelie) {
                 next_soft_speed_limit += 0.15f;
