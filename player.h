@@ -17,7 +17,10 @@ struct player {
         struct rkg rkg;
         struct stats stats;
         struct bsp bsp;
+        bool hop;
+        struct vec3 hop_dir;
         f32 turn;
+        f32 turn_rot_z_inc;
         bool wheelie;
         u8 wheelie_frame;
         f32 wheelie_rot;

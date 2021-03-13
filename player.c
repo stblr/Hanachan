@@ -238,7 +238,10 @@ void player_init(struct player *player, struct rkg rkg, struct stats stats, stru
                 .rkg = rkg,
                 .stats = stats,
                 .bsp = bsp,
+                .hop = false,
+                .hop_dir = { 0.0f, 0.0f, 0.0f },
                 .turn = 0.0f,
+                .turn_rot_z_inc = 0.08f,
                 .wheelie = false,
                 .wheelie_frame = 0,
                 .wheelie_rot = 0.0f,
@@ -318,36 +321,104 @@ void player_update(struct player *player, u32 frame) {
                 if (player->rkg.inputs[frame - 172] >> 5 & 1) {
                         player->wheelie = true;
                 }
-                if (player->wheelie) {
-                        player->wheelie_frame++;
-                        if (should_cancel_wheelie(player)) {
-                                player->wheelie = false;
-                                player->wheelie_frame = 0;
-                        } else {
-                                player->wheelie_rot += 0.01f;
-                                if (player->wheelie_rot > 0.07f) {
-                                        player->wheelie_rot = 0.07f;
-                                }
+        }
+
+        if (player->ground) {
+                player->top = vec3_normalize(player->next_top);
+        } else if (frame < 411) {
+                player->top = (struct vec3) { 0.0f, 1.0f, 0.0f };
+        }
+
+        if (frame == 514) {
+                vec3_print(player->dir);
+                vec3_print(player->top);
+        }
+        struct vec3 right = { 1.0f, 0.0f, 0.0f };
+        right = quat_rotate_vec3(player->rot, right);
+        struct vec3 next_dir = vec3_cross(right, player->top);
+        next_dir = vec3_normalize(next_dir);
+        if (player->hop) {
+                next_dir = player->hop_dir;
+        }
+        next_dir = vec3_perp_in_plane(next_dir, player->top);
+        struct vec3 next_dir_diff = vec3_sub(next_dir, player->dir);
+        if (vec3_sq_norm(next_dir_diff) <= FLT_EPSILON) {
+                player->dir = next_dir;
+                player->dir_diff = (struct vec3) { 0.0f, 0.0f, 0.0f };
+        } else {
+                struct vec3 cross0 = vec3_cross(player->dir, next_dir);
+                next_dir_diff = vec3_add(player->dir_diff, vec3_scale(next_dir_diff, 0.7f));
+                player->dir = vec3_add(player->dir, next_dir_diff);
+                player->dir = vec3_normalize(player->dir);
+                player->dir_diff = vec3_scale(next_dir_diff, 0.1f);
+                struct vec3 cross1 = vec3_cross(player->dir, next_dir);
+                if (vec3_dot(cross0, cross1) < 0.0f) {
+                        player->dir = next_dir;
+                        player->dir_diff = (struct vec3) { 0.0f, 0.0f, 0.0f };
+                }
+        }
+        if (frame == 514) {
+                vec3_print(player->dir);
+                vec3_print(player->top);
+        }
+
+        if (frame >= 411) {
+                i8 discrete_stick_x = (player->rkg.inputs[frame - 172] >> 12);
+                f32 stick_x = (discrete_stick_x - 7.0f) / 7.0f;
+                f32 reactivity = player->stats.handling_reactivity;
+                player->turn = reactivity * -stick_x + (1.0f - reactivity) * player->turn;
+        }
+
+        if (frame >= 411) {
+                bool drift = player->rkg.inputs[frame - 172] >> 3 & 1;
+                if (drift && !player->hop) {
+                        player->hop = true;
+                        struct vec3 forward = { 0.0f, 0.0f, 1.0f };
+                        player->hop_dir = quat_rotate_vec3(player->rot, forward);
+                        player->wheelie = false;
+                        player->wheelie_frame = 0;
+                        player->wheelie_rot_dec = 0.0f;
+                        player->speed0.y = 10.0f;
+                        player->normal_acceleration = 0.0f;
+                }
+        }
+
+        if (player->wheelie) {
+                player->wheelie_frame++;
+                if (should_cancel_wheelie(player)) {
+                        player->wheelie = false;
+                        player->wheelie_frame = 0;
+                        player->wheelie_rot_dec = 0.0f;
+                } else {
+                        player->wheelie_rot += 0.01f;
+                        if (player->wheelie_rot > 0.07f) {
+                                player->wheelie_rot = 0.07f;
                         }
-                } else if (player->wheelie_rot > 0.0f) {
-                        player->wheelie_rot_dec -= 0.001f;
-                        player->wheelie_rot += player->wheelie_rot_dec;
-                        if (player->wheelie_rot < 0.0f) {
-                                player->wheelie_rot = 0.0f;
-                        }
+                }
+        } else if (player->wheelie_rot > 0.0f) {
+                player->wheelie_rot_dec -= 0.001f;
+                player->wheelie_rot += player->wheelie_rot_dec;
+                if (player->wheelie_rot < 0.0f) {
+                        player->wheelie_rot = 0.0f;
+                }
+        }
+
+        if (frame >= 172) {
+                if (frame >= 411) {
+                        player->turn_rot_z_inc += 0.3f * (0.1f - player->turn_rot_z_inc);
                 }
 
                 i8 discrete_stick_x = (player->rkg.inputs[frame - 172] >> 12);
                 f32 stick_x = (discrete_stick_x - 7.0f) / 7.0f;
                 f32 s;
                 if (stick_x < -0.2f && !player->wheelie) {
-                        player->turn_rot_z -= 0.08f;
+                        player->turn_rot_z -= player->turn_rot_z_inc;
                         s = 1.0f;
                 } else if (stick_x <= 0.2f || player->wheelie) {
                         player->turn_rot_z *= 0.9f;
                         s = 0.0f;
                 } else {
-                        player->turn_rot_z += 0.08f;
+                        player->turn_rot_z += player->turn_rot_z_inc;
                         s = -1.0f;
                 }
                 if (player->turn_rot_z < -0.6f) {
@@ -360,35 +431,6 @@ void player_update(struct player *player, u32 frame) {
                         col0 = vec3_scale(col0, s);
                         player->speed0 = vec3_add(player->speed0, col0);
                 }
-        }
-
-        struct vec3 right = { 1.0f, 0.0f, 0.0f };
-        right = quat_rotate_vec3(player->rot, right);
-        struct vec3 next_dir = vec3_cross(right, player->top);
-        next_dir = vec3_normalize(next_dir);
-        next_dir = vec3_perp_in_plane(next_dir, player->top);
-        struct vec3 next_dir_diff = vec3_sub(next_dir, player->dir);
-        if (vec3_sq_norm(next_dir_diff) <= FLT_EPSILON) {
-                player->dir = next_dir;
-                player->dir_diff = (struct vec3) { 0.0f, 0.0f, 0.0f };
-        } else {
-                next_dir_diff = vec3_add(player->dir_diff, vec3_scale(next_dir_diff, 0.7f));
-                player->dir = vec3_add(player->dir, next_dir_diff);
-                player->dir = vec3_normalize(player->dir);
-                player->dir_diff = vec3_scale(next_dir_diff, 0.1f);
-        }
-
-        if (frame >= 411) {
-                i8 discrete_stick_x = (player->rkg.inputs[frame - 172] >> 12);
-                f32 stick_x = (discrete_stick_x - 7.0f) / 7.0f;
-                f32 reactivity = player->stats.handling_reactivity;
-                player->turn = reactivity * -stick_x + (1.0f - reactivity) * player->turn;
-        }
-
-        if (player->ground) {
-                player->top = vec3_normalize(player->next_top);
-        } else {
-                player->top = (struct vec3) { 0.0f, 1.0f, 0.0f };
         }
 
         if (frame < 411) {
@@ -434,8 +476,12 @@ void player_update(struct player *player, u32 frame) {
 
         struct vec3 speed1_dir = vec3_perp_in_plane(player->dir, player->top);
         right = vec3_cross(player->top, player->dir);
+        f32 angle = 0.5f;
+        if (!player->ground) {
+                angle = 0.2f;
+        }
         f32 deg_to_rad = M_PI / 180.0;
-        speed1_dir = mat33_mul_vec3(mat34_from_axis_angle(right, 0.5f * deg_to_rad), speed1_dir);
+        speed1_dir = mat33_mul_vec3(mat34_from_axis_angle(right, angle * deg_to_rad), speed1_dir);
         player->speed1 = vec3_scale(speed1_dir, player->speed1_norm);
 
         player->speed = vec3_add(player->speed0, player->speed1);
@@ -460,6 +506,9 @@ void player_update(struct player *player, u32 frame) {
         rot_vec2.x -= player->wheelie_rot * (1.0f - fabsf(dot));
 
         f32 turn = player->turn * player->stats.handling_tightness;
+        if (player->hop && frame != 512) {
+                turn *= 1.4f;
+        }
         turn *= 0.5f;
         if (player->wheelie) {
                 turn *= 0.2f;
@@ -472,6 +521,9 @@ void player_update(struct player *player, u32 frame) {
                 f32 acceleration = player->speed1_norm - last_speed1_norm;
                 acceleration = fminf(fmaxf(-3.0f, acceleration), 3.0f);
                 player->standstill_boost_rot += 0.2f * (-acceleration * 0.15f * 0.08f - player->standstill_boost_rot);
+        }
+        if (!player->ground) {
+                player->standstill_boost_rot = 0.0f;
         }
         rot_vec2.x += player->standstill_boost_rot;
         rot_vec2.z += 0.05f * player->turn_rot_z;
@@ -498,7 +550,11 @@ void player_update(struct player *player, u32 frame) {
         if (vec3_dot(top, rot_top) < 0.9999f) {
                 struct vec4 rot = quat_from_vectors(rot_top, top);
                 struct vec4 prod = quat_mul(rot, player->rot);
-                player->rot = quat_slerp(player->rot, prod, 0.1f);
+                f32 t = 0.1f;
+                if (player->hop && frame != 512) {
+                        t = 0.22f;
+                }
+                player->rot = quat_slerp(player->rot, prod, t);
         }
         player->rot = vec4_normalize(player->rot);
 
