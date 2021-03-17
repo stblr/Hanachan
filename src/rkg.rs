@@ -1,7 +1,6 @@
 use core::iter;
 
-use std::fs::File;
-use std::io::Read;
+use std::fs;
 use std::path::Path;
 
 use crate::error::Error;
@@ -15,9 +14,7 @@ pub struct Rkg {
 
 impl Rkg {
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Rkg, Error> {
-        let mut file = File::open(path)?;
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)?;
+        let buffer = fs::read(path)?;
         let view = View::new(&buffer);
         Self::parse(&view)
     }
@@ -26,15 +23,12 @@ impl Rkg {
         let header = Header::parse(view)?;
 
         let compressed_len = view.get_u32(0x88).ok_or(Error::Parsing)? as usize;
-        let compressed_view = View::new(&view.inner()[0x88 + 0x04..0x88 + 0x04 + compressed_len]);
-        let decompressed = yaz::decompress(&compressed_view)?;
+        let compressed = &view.inner()[0x88 + 0x04..0x88 + 0x04 + compressed_len];
+        let decompressed = yaz::decompress(&compressed)?;
         let view = View::new(&decompressed);
         let frames = Frame::parse(&view)?;
 
-        Ok(Rkg {
-            header,
-            frames,
-        })
+        Ok(Rkg { header, frames })
     }
 
     pub fn header(&self) -> &Header {
@@ -142,33 +136,33 @@ impl Frame {
             .map(|index| (trick_view.index_u16(2 * index) & 0xfff) as u32)
             .sum();
 
-        if face_button_frame_count != direction_frame_count ||
-            face_button_frame_count != trick_frame_count {
+        if face_button_frame_count != direction_frame_count
+            || face_button_frame_count != trick_frame_count
+        {
             return Err(Error::Parsing);
         }
 
-        let face_button_iter = (0..face_button_input_count)
-            .flat_map(|index| {
-                let val = face_button_view.index_u8(2 * index);
-                let frame_count = face_button_view.index_u8(2 * index + 1);
-                iter::repeat(val).take(frame_count as usize)
-            });
+        let face_button_iter = (0..face_button_input_count).flat_map(|index| {
+            let val = face_button_view.index_u8(2 * index);
+            let frame_count = face_button_view.index_u8(2 * index + 1);
+            iter::repeat(val).take(frame_count as usize)
+        });
 
-        let direction_iter = (0..direction_input_count)
-            .flat_map(|index| {
-                let val = direction_view.index_u8(2 * index);
-                let frame_count = direction_view.index_u8(2 * index + 1);
-                iter::repeat(val).take(frame_count as usize)
-            });
+        let direction_iter = (0..direction_input_count).flat_map(|index| {
+            let val = direction_view.index_u8(2 * index);
+            let frame_count = direction_view.index_u8(2 * index + 1);
+            iter::repeat(val).take(frame_count as usize)
+        });
 
-        let trick_iter = (0..trick_input_count)
-            .flat_map(|index| {
-                let val = trick_view.index_u8(2 * index) >> 4;
-                let frame_count = trick_view.index_u16(2 * index) & 0xfff;
-                iter::repeat(val).take(frame_count as usize)
-            });
+        let trick_iter = (0..trick_input_count).flat_map(|index| {
+            let val = trick_view.index_u8(2 * index) >> 4;
+            let frame_count = trick_view.index_u16(2 * index) & 0xfff;
+            iter::repeat(val).take(frame_count as usize)
+        });
 
-        face_button_iter.zip(direction_iter).zip(trick_iter)
+        face_button_iter
+            .zip(direction_iter)
+            .zip(trick_iter)
             .map(|((face_button, direction), trick)| {
                 if face_button >> 4 != 0 {
                     return Err(Error::Parsing);

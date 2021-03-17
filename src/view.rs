@@ -1,14 +1,13 @@
 use std::convert::TryInto;
 
+#[derive(Debug)]
 pub struct View<'a> {
-    inner: &'a [u8]
+    inner: &'a [u8],
 }
 
 impl View<'_> {
     pub fn new(inner: &[u8]) -> View {
-        View {
-            inner,
-        }
+        View { inner }
     }
 
     pub fn inner(&self) -> &[u8] {
@@ -45,31 +44,5 @@ impl View<'_> {
 
     pub fn index_u32(&self, offset: usize) -> u32 {
         self.get_u32(offset).unwrap()
-    }
-
-    pub fn stream(&self) -> Stream {
-        Stream {
-            view: &self,
-            index: 0,
-        }
-    }
-}
-
-pub struct Stream<'a> {
-    view: &'a View<'a>,
-    index: usize,
-}
-
-impl Stream<'_> {
-    pub fn next_u8(&mut self) -> Option<u8> {
-        let val = self.view.get_u8(self.index);
-        self.index += 1;
-        val
-    }
-
-    pub fn next_u16(&mut self) -> Option<u16> {
-        let val = self.view.get_u16(self.index);
-        self.index += 2;
-        val
     }
 }
