@@ -76,35 +76,7 @@ impl Rkg {
             .by_ref()
             .zip(direction_iter.by_ref())
             .zip(trick_iter.by_ref())
-            .map(|((face_button, direction), trick)| {
-                if face_button >> 4 != 0 {
-                    return Err(Error {});
-                }
-                let accelerate = face_button & 1 != 0;
-                let brake = face_button >> 1 & 1 != 0;
-                let use_item = face_button >> 2 & 1 != 0;
-                let drift = face_button >> 3 & 1 != 0;
-
-                let stick_x = direction >> 4;
-                let stick_y = direction & 0xf;
-                if stick_x == 15 || stick_y == 15 {
-                    return Err(Error {});
-                }
-
-                if trick > 4 {
-                    return Err(Error {});
-                }
-
-                Ok(Frame {
-                    accelerate,
-                    brake,
-                    use_item,
-                    drift,
-                    stick_x,
-                    stick_y,
-                    trick,
-                })
-            })
+            .map(|((face_button, direction), trick)| Frame::new(face_button, direction, trick))
             .collect::<Result<Vec<Frame>, Error>>()?;
 
         if face_button_iter.next().is_some()
@@ -209,6 +181,38 @@ struct Frame {
     stick_x: u8,
     stick_y: u8,
     trick: u8,
+}
+
+impl Frame {
+    fn new(face_button: u8, direction: u8, trick: u8) -> Result<Frame, Error> {
+        if face_button >> 4 != 0 {
+            return Err(Error {});
+        }
+        let accelerate = face_button & 1 != 0;
+        let brake = face_button >> 1 & 1 != 0;
+        let use_item = face_button >> 2 & 1 != 0;
+        let drift = face_button >> 3 & 1 != 0;
+
+        let stick_x = direction >> 4;
+        let stick_y = direction & 0xf;
+        if stick_x == 15 || stick_y == 15 {
+            return Err(Error {});
+        }
+
+        if trick > 4 {
+            return Err(Error {});
+        }
+
+        Ok(Frame {
+            accelerate,
+            brake,
+            use_item,
+            drift,
+            stick_x,
+            stick_y,
+            trick,
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
