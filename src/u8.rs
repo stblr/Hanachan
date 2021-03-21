@@ -123,14 +123,19 @@ impl Node {
         name: String,
         nodes: &Vec<Node>,
     ) -> Result<Node, Error> {
+        let is_root = nodes.is_empty();
+
         if name_offset != raw.name_offset {
+            return Err(Error {});
+        }
+        if is_root != name.is_empty() {
             return Err(Error {});
         }
 
         let content = match raw.content {
             RawNodeContent::File { .. } => NodeContent::File,
             RawNodeContent::Directory { parent, next } => {
-                if !nodes.is_empty() {
+                if !is_root {
                     match nodes.get(parent).ok_or(Error {})?.content {
                         NodeContent::File => return Err(Error {}),
                         NodeContent::Directory {
