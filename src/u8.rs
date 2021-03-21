@@ -1,6 +1,9 @@
+use core::iter;
+
 use std::fs;
 use std::path::Path;
 
+use crate::bsp::{self, Bsp};
 use crate::error;
 use crate::take::{self, Take, TakeFromSlice, TakeIter};
 use crate::yaz;
@@ -29,7 +32,7 @@ impl U8 {
         }
 
         let fs_size = input.take::<u32>()? as usize;
-        let file_data_offset = (input.take::<u32>()? as usize)
+        let mut file_data_offset = (input.take::<u32>()? as usize)
             .checked_sub(0x20)
             .ok_or(Error {})?;
         if fs_size > file_data_offset {
@@ -55,18 +58,52 @@ impl U8 {
             Some((start_offset, name))
         });
 
+        let file_data = input.get(file_data_offset..).ok_or(Error {})?;
+        file_data_offset += 0x20;
+
         let nodes = node_iter
             .zip(name_iter)
             .try_fold::<_, _, Result<Vec<Node>, Error>>(
                 vec![],
                 |mut nodes, (raw, (name_offset, name))| {
-                    let node = Node::try_from_raw(raw, name_offset, name, &nodes)?;
+                    let node = Node::try_from_raw(
+                        raw,
+                        name_offset,
+                        name,
+                        file_data_offset,
+                        file_data,
+                        &nodes,
+                    )?;
                     nodes.push(node);
                     Ok(nodes)
                 },
             )?;
 
         Ok(U8 { nodes })
+    }
+
+    pub fn get_node(&self, path: &str) -> Option<&Node> {
+        let mut path_iter = path.split("/");
+        let index =
+            path_iter
+                .by_ref()
+                .try_fold(0, |index, name| match self.nodes[index].content {
+                    NodeContent::File { .. } => None,
+                    NodeContent::Directory { next, .. } => {
+                        iter::successors(Some(index + 1), |index| {
+                            match self.nodes.get(*index)?.content {
+                                NodeContent::File { .. } => Some(index + 1),
+                                NodeContent::Directory { next, .. } => Some(next),
+                            }
+                        })
+                        .take_while(|index| *index < next)
+                        .find(|index| self.nodes[*index].name == name)
+                    }
+                })?;
+        match path_iter.next() {
+            None => Some(&self.nodes[index]),
+            Some(_) => None,
+        }
     }
 }
 
@@ -105,14 +142,14 @@ impl TakeFromSlice for RawNode {
 }
 
 #[derive(Clone, Debug)]
-struct Node {
+pub struct Node {
     name: String,
     content: NodeContent,
 }
 
 #[derive(Clone, Debug)]
 enum NodeContent {
-    File,
+    File(File),
     Directory { parent: usize, next: usize },
 }
 
@@ -121,6 +158,8 @@ impl Node {
         raw: RawNode,
         name_offset: usize,
         name: String,
+        file_data_offset: usize,
+        file_data: &[u8],
         nodes: &Vec<Node>,
     ) -> Result<Node, Error> {
         let is_root = nodes.is_empty();
@@ -133,11 +172,15 @@ impl Node {
         }
 
         let content = match raw.content {
-            RawNodeContent::File { .. } => NodeContent::File,
+            RawNodeContent::File { mut offset, size } => {
+                offset -= file_data_offset;
+                let input = file_data.get(offset..offset + size).ok_or(Error {})?;
+                NodeContent::File(File::parse(&name, input)?)
+            }
             RawNodeContent::Directory { parent, next } => {
                 if !is_root {
                     match nodes.get(parent).ok_or(Error {})?.content {
-                        NodeContent::File => return Err(Error {}),
+                        NodeContent::File(_) => return Err(Error {}),
                         NodeContent::Directory {
                             next: parent_next, ..
                         } => {
@@ -155,11 +198,34 @@ impl Node {
     }
 }
 
+#[derive(Clone, Debug)]
+enum File {
+    Bsp(Bsp),
+    Other,
+}
+
+impl File {
+    fn parse(name: &str, input: &[u8]) -> Result<File, Error> {
+        if name.ends_with(".bsp") {
+            Ok(File::Bsp(Bsp::parse(input)?))
+        } else {
+            Ok(File::Other)
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Error {}
 
 impl From<take::Error> for Error {
     fn from(_: take::Error) -> Error {
+        Error {}
+    }
+}
+
+// TODO proper error handling
+impl From<bsp::Error> for Error {
+    fn from(_: bsp::Error) -> Error {
         Error {}
     }
 }

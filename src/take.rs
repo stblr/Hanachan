@@ -38,6 +38,12 @@ impl TakeFromSlice for u32 {
     }
 }
 
+impl TakeFromSlice for f32 {
+    fn take_from_slice(slice: &mut &[u8]) -> Result<f32, Error> {
+        slice.take::<u32>().map(f32::from_bits)
+    }
+}
+
 impl TakeFromSlice for String {
     fn take_from_slice(slice: &mut &[u8]) -> Result<String, Error> {
         let vec = iter::repeat_with(|| slice.take::<u8>())
@@ -50,11 +56,17 @@ impl TakeFromSlice for String {
 
 pub trait Take {
     fn take<T: TakeFromSlice>(&mut self) -> Result<T, Error>;
+    fn skip(&mut self, size: usize) -> Result<(), Error>;
 }
 
 impl Take for &[u8] {
     fn take<T: TakeFromSlice>(&mut self) -> Result<T, Error> {
         <T>::take_from_slice(self)
+    }
+
+    fn skip(&mut self, size: usize) -> Result<(), Error> {
+        *self = self.get(size..).ok_or(Error {})?;
+        Ok(())
     }
 }
 

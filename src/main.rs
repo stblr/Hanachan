@@ -1,8 +1,10 @@
+mod bsp;
 mod error;
 mod rkg;
 mod slice_ext;
 mod take;
 mod u8;
+mod vec3;
 mod yaz;
 
 use std::env;
@@ -18,6 +20,8 @@ fn main() {
     }
 
     let common_szs = U8::open_szs(&args[1]).unwrap();
+    let bsp = common_szs.get_node("./bsp/se_bike.bsp");
+    println!("{:#?}", bsp);
 
     match Rkg::open(&args[2]) {
         Ok(rkg) => eprintln!("{:#?}", rkg.header()),
