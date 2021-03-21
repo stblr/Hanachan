@@ -1,8 +1,8 @@
 mod error;
 mod rkg;
+mod slice_ext;
 mod take;
 mod u8;
-mod view;
 mod yaz;
 
 use std::env;

@@ -81,5 +81,58 @@ impl<T: TakeFromSlice> Iterator for TakeIter<'_, T> {
     }
 }
 
+pub struct Bits<'a> {
+    slice: &'a [u8],
+    leftover: Option<(u8, u8)>,
+}
+
+impl Bits<'_> {
+    pub fn new(slice: &[u8]) -> Bits {
+        Bits {
+            slice,
+            leftover: None,
+        }
+    }
+
+    pub fn take_bool(&mut self) -> Result<bool, Error> {
+        self.take_u8(1).map(|val| val != 0)
+    }
+
+    pub fn take_u8(&mut self, mut size: u8) -> Result<u8, Error> {
+        assert!(size > 0 && size <= 8);
+
+        let mut val = 0;
+        if let Some((leftover_size, leftover_val)) = self.leftover {
+            if size < leftover_size {
+                let diff = leftover_size - size;
+                size = 0;
+                val = leftover_val >> diff;
+                self.leftover = Some((diff, leftover_val & (1 << diff) - 1));
+            } else {
+                size -= leftover_size;
+                val = leftover_val;
+                self.leftover = None;
+            }
+        }
+
+        if size != 0 {
+            let next = self.slice.take::<u8>()?;
+            let leftover_size = 8 - size;
+            val = val << size | next >> leftover_size;
+            if size < 8 {
+                self.leftover = Some((leftover_size, next & (1 << leftover_size) - 1));
+            }
+        }
+
+        Ok(val)
+    }
+
+    pub fn take_u16(&mut self, size: u8) -> Result<u16, Error> {
+        assert!(size > 8 && size <= 16);
+
+        Ok((self.take_u8(8)? as u16) << size - 8 | self.take_u8(size - 8)? as u16)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Error {}

@@ -1,12 +1,13 @@
 use std::io;
 
+use crate::rkg;
 use crate::u8;
 use crate::yaz;
 
 #[derive(Debug)]
 pub enum Error {
     Io(io::Error),
-    Parsing, // TODO remove
+    Rkg,
     U8,
     Yaz,
 }
@@ -14,6 +15,12 @@ pub enum Error {
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Error {
         Error::Io(error)
+    }
+}
+
+impl From<rkg::Error> for Error {
+    fn from(_: rkg::Error) -> Error {
+        Error::Rkg
     }
 }
 
