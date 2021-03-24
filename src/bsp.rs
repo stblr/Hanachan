@@ -93,6 +93,7 @@ impl TakeFromSlice for Option<Wheel> {
         let distance_suspension = slice.take()?;
         let speed_suspension = slice.take()?;
         let slack_y = slice.take()?;
+        let _rot_x = slice.take::<f32>()?;
         let topmost_pos = slice.take()?;
         let wheel_radius = slice.take()?;
         let hitbox_radius = slice.take()?;
