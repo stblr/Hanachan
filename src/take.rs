@@ -93,12 +93,13 @@ impl<T: TakeFromSlice> Iterator for TakeIter<'_, T> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Bits<'a> {
     slice: &'a [u8],
     leftover: Option<(u8, u8)>,
 }
 
-impl Bits<'_> {
+impl<'a> Bits<'a> {
     pub fn new(slice: &[u8]) -> Bits {
         Bits {
             slice,
@@ -143,6 +144,13 @@ impl Bits<'_> {
         assert!(size > 8 && size <= 16);
 
         Ok((self.take_u8(8)? as u16) << size - 8 | self.take_u8(size - 8)? as u16)
+    }
+
+    pub fn try_into_inner(self) -> Result<&'a [u8], Error> {
+        match self.leftover {
+            Some(_) => Err(Error {}),
+            None => Ok(self.slice),
+        }
     }
 }
 

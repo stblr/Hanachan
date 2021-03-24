@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::error;
 use crate::slice_ext::SliceExt;
-use crate::take::{self, Bits, Take};
+use crate::take::{self, Bits, Take, TakeFromSlice};
 use crate::yaz;
 
 #[derive(Clone, Debug)]
@@ -94,11 +94,9 @@ impl Rkg {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Header {
-    minutes: u8,
-    seconds: u8,
-    milliseconds: u16,
+    time: Time,
     track: u8,
     vehicle: u8,
     character: u8,
@@ -107,6 +105,8 @@ pub struct Header {
     day: u8,
     controller: u8,
     compressed: bool,
+    lap_count: u8,
+    lap_times: Vec<Time>,
 }
 
 impl Header {
@@ -116,14 +116,9 @@ impl Header {
             return Err(Error {});
         }
 
-        let mut bits = Bits::new(input);
-        let minutes = bits.take_u8(7)?;
-        let seconds = bits.take_u8(7)?;
-        let milliseconds = bits.take_u16(10)?;
-        if minutes >= 6 || seconds >= 60 || milliseconds >= 1000 {
-            return Err(Error {});
-        }
+        let time = input.take::<Time>()?;
 
+        let mut bits = Bits::new(input);
         let track = bits.take_u8(6)?;
         let _padding = bits.take_u8(2)?;
         if track >= 0x20 {
@@ -156,10 +151,33 @@ impl Header {
             return Err(Error {});
         }
 
+        let _padding = bits.take_u8(2)?;
+        let _ghost_type = bits.take_u8(7)?;
+        let _automatic = bits.take_bool()?;
+        let _padding = bits.take_u8(1)?;
+
+        let mut input = bits.try_into_inner().unwrap();
+        let _decompressed_size = input.take::<u16>()?;
+
+        let lap_count = input.take::<u8>()?;
+        if lap_count > 9 {
+            return Err(Error {});
+        }
+        let lap_times = iter::repeat_with(|| input.take::<Time>())
+            .take(lap_count as usize)
+            .collect::<Result<Vec<Time>, take::Error>>()?;
+        for _ in lap_count..9 {
+            for _ in 0..3 {
+                let _unused = input.take::<u8>()?;
+            }
+        }
+
+        for _ in 0..8 {
+            let _padding = input.take::<u8>()?;
+        }
+
         Ok(Header {
-            minutes,
-            seconds,
-            milliseconds,
+            time,
             track,
             vehicle,
             character,
@@ -168,7 +186,35 @@ impl Header {
             day,
             controller,
             compressed,
+            lap_count,
+            lap_times,
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Time {
+    minutes: u8,
+    seconds: u8,
+    milliseconds: u16,
+}
+
+impl TakeFromSlice for Time {
+    fn take_from_slice(slice: &mut &[u8]) -> Result<Time, take::Error> {
+        let mut bits = Bits::new(slice);
+        let minutes = bits.take_u8(7)?;
+        let seconds = bits.take_u8(7)?;
+        let milliseconds = bits.take_u16(10)?;
+        *slice = bits.try_into_inner().unwrap();
+        if minutes >= 6 || seconds >= 60 || milliseconds >= 1000 {
+            Err(take::Error {})
+        } else {
+            Ok(Time {
+                minutes,
+                seconds,
+                milliseconds,
+            })
+        }
     }
 }
 
