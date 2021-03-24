@@ -7,7 +7,7 @@ pub struct Bsp {
     hitboxes: [Option<Hitbox>; 16],
     cuboids: [Vec3; 2],
     rot_factor: f32,
-    wheels: [Option<Wheel>; 2],
+    wheels: [Wheel; 2],
 }
 
 impl Bsp {
@@ -78,15 +78,10 @@ struct Wheel {
     hitbox_radius: f32,
 }
 
-impl TakeFromSlice for Option<Wheel> {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<Option<Wheel>, take::Error> {
-        match slice.take::<u16>()? {
-            0 => {
-                slice.skip(0x2a)?;
-                return Ok(None);
-            }
-            1 => (),
-            _ => return Err(take::Error {}),
+impl TakeFromSlice for Wheel {
+    fn take_from_slice(slice: &mut &[u8]) -> Result<Wheel, take::Error> {
+        if slice.take::<u16>()? != 1 {
+            return Err(take::Error {});
         }
         let _padding = slice.take::<u16>()?;
 
@@ -99,14 +94,14 @@ impl TakeFromSlice for Option<Wheel> {
         let hitbox_radius = slice.take()?;
         let _unknown = slice.take::<u32>()?;
 
-        Ok(Some(Wheel {
+        Ok(Wheel {
             distance_suspension,
             speed_suspension,
             slack_y,
             topmost_pos,
             wheel_radius,
             hitbox_radius,
-        }))
+        })
     }
 }
 
