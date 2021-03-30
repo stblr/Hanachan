@@ -1,7 +1,7 @@
 use crate::take::{self, Take, TakeFromSlice};
 use crate::vec3::Vec3;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Bsp {
     initial_pos_y: f32,
     hitboxes: [Option<Hitbox>; 16],

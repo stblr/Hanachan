@@ -4,7 +4,9 @@ use std::fs;
 use std::path::Path;
 
 use crate::bsp::{self, Bsp};
+use crate::driver_param::DriverParam;
 use crate::error;
+use crate::kart_param::KartParam;
 use crate::take::{self, Take, TakeFromSlice, TakeIter};
 use crate::yaz;
 
@@ -147,12 +149,6 @@ pub struct Node {
     content: NodeContent,
 }
 
-#[derive(Clone, Debug)]
-enum NodeContent {
-    File(File),
-    Directory { parent: usize, next: usize },
-}
-
 impl Node {
     fn try_from_raw(
         raw: RawNode,
@@ -196,20 +192,66 @@ impl Node {
 
         Ok(Node { name, content })
     }
+
+    pub fn content(&self) -> &NodeContent {
+        &self.content
+    }
 }
 
 #[derive(Clone, Debug)]
-enum File {
+pub enum NodeContent {
+    File(File),
+    Directory { parent: usize, next: usize },
+}
+
+impl NodeContent {
+    pub fn as_file(&self) -> Option<&File> {
+        match self {
+            NodeContent::File(file) => Some(file),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum File {
     Bsp(Bsp),
+    DriverParam(DriverParam),
+    KartParam(KartParam),
     Other,
 }
 
 impl File {
-    fn parse(name: &str, input: &[u8]) -> Result<File, Error> {
-        if name.ends_with(".bsp") {
+    fn parse(name: &str, mut input: &[u8]) -> Result<File, Error> {
+        if name == "driverParam.bin" {
+            Ok(File::DriverParam(input.take()?))
+        } else if name == "kartParam.bin" {
+            Ok(File::KartParam(input.take()?))
+        } else if name.ends_with(".bsp") {
             Ok(File::Bsp(Bsp::parse(input)?))
         } else {
             Ok(File::Other)
+        }
+    }
+
+    pub fn as_bsp(&self) -> Option<&Bsp> {
+        match self {
+            File::Bsp(bsp) => Some(bsp),
+            _ => None,
+        }
+    }
+
+    pub fn as_driver_param(&self) -> Option<&DriverParam> {
+        match self {
+            File::DriverParam(driver_param) => Some(driver_param),
+            _ => None,
+        }
+    }
+
+    pub fn as_kart_param(&self) -> Option<&KartParam> {
+        match self {
+            File::KartParam(kart_param) => Some(kart_param),
+            _ => None,
         }
     }
 }

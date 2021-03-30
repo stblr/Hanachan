@@ -4,6 +4,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::error;
+use crate::player::Params;
 use crate::slice_ext::SliceExt;
 use crate::take::{self, Bits, Take, TakeFromSlice};
 use crate::yaz;
@@ -98,8 +99,7 @@ impl Rkg {
 pub struct Header {
     time: Time,
     track: u8,
-    vehicle: u8,
-    character: u8,
+    params: Params,
     year: u16,
     month: u8,
     day: u8,
@@ -125,15 +125,9 @@ impl Header {
             return Err(Error {});
         }
 
-        let vehicle = bits.take_u8(6)?;
-        if vehicle >= 0x24 {
-            return Err(Error {});
-        }
-        let character = bits.take_u8(6)?;
-        if character >= 0x18 {
-            // TODO support Miis
-            return Err(Error {});
-        }
+        let vehicle_id = bits.take_u8(6)?;
+        let character_id = bits.take_u8(6)?;
+        let params = Params::try_from_raw(vehicle_id, character_id).ok_or(take::Error {})?;
 
         let year = 2000 + bits.take_u8(7)? as u16;
         let month = bits.take_u8(4)?;
@@ -179,8 +173,7 @@ impl Header {
         Ok(Header {
             time,
             track,
-            vehicle,
-            character,
+            params,
             year,
             month,
             day,
@@ -189,6 +182,10 @@ impl Header {
             lap_count,
             lap_times,
         })
+    }
+
+    pub fn params(&self) -> &Params {
+        &self.params
     }
 }
 
