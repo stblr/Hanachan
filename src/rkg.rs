@@ -13,6 +13,7 @@ use crate::yaz;
 pub struct Rkg {
     header: Header,
     frames: Vec<Frame>,
+    ctgp_footer: Option<CtgpFooter>,
 }
 
 impl Rkg {
@@ -26,11 +27,16 @@ impl Rkg {
         let header = Header::parse(header_input)?;
 
         let compressed_size = input.take::<u32>()? as usize;
-        let (compressed, _input) = input.try_split_at(compressed_size).ok_or(Error {})?;
+        let (compressed, mut input) = input.try_split_at(compressed_size).ok_or(Error {})?;
         let decompressed = yaz::decompress(&compressed)?;
         let frames = Rkg::parse_frames(&decompressed)?;
 
-        Ok(Rkg { header, frames })
+        let _crc32 = input.take::<u32>()?;
+
+        let ctgp_footer = (!input.is_empty()).then(|| CtgpFooter::parse(input)).transpose()?;
+        println!("{:#x?}", ctgp_footer);
+
+        Ok(Rkg { header, frames, ctgp_footer })
     }
 
     fn parse_frames(mut input: &[u8]) -> Result<Vec<Frame>, Error> {
@@ -92,6 +98,13 @@ impl Rkg {
 
     pub fn header(&self) -> &Header {
         &self.header
+    }
+
+    pub fn accelerate(&self, frame: u32) -> bool {
+        match frame.checked_sub(172) {
+            Some(frame) => self.frames.get(frame as usize).filter(|frame| frame.accelerate).is_some(),
+            None => false,
+        }
     }
 }
 
@@ -254,6 +267,120 @@ impl Frame {
             stick_x,
             stick_y,
             trick,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct CtgpFooter {
+    track_sha1: [u32; 5],
+    player_id: u64,
+    true_time: f32,
+    ctgp_version: u32,
+    lap_dubious_intersections: [bool; 10],
+    lap_true_times: [f32; 10],
+    rtc_end: u64,
+    rtc_start: u64,
+    rtc_paused: u64,
+    my_stuff_enabled: bool,
+    my_stuff_used: bool,
+    usb_gcn_enabled: bool,
+    dubious_intersection: bool,
+    mushrooms: [u8; 3],
+    shortcut_definition_version: u8,
+    cannon: bool,
+    oob: bool,
+    slowdown: bool,
+    rapidfire: bool,
+    dubious: bool,
+    replaced_mii_data: bool,
+    replaced_name: bool,
+    respawn: bool,
+    category: u8,
+}
+
+impl CtgpFooter {
+    fn parse(mut input: &[u8]) -> Result<CtgpFooter, Error> {
+        input.skip(0x48)?;
+
+        let mut track_sha1 = [0; 5];
+        for i in 0..5 {
+            track_sha1[i] = input.take()?;
+        }
+
+        let player_id = input.take()?;
+        let true_time = input.take()?;
+        let ctgp_version = input.take()?;
+
+        let mut bits = Bits::new(input);
+        let mut lap_dubious_intersections = [false; 10];
+        for i in 0..10 {
+            lap_dubious_intersections[i] = bits.take_bool()?;
+        }
+        let _padding = bits.take_u8(6)?;
+
+        let mut input = bits.try_into_inner().unwrap();
+        input.skip(0x12)?;
+        let mut lap_true_times = [0.0; 10];
+        for i in 0..10 {
+            lap_true_times[i] = input.take()?;
+        }
+        lap_true_times.reverse();
+
+        let rtc_end = input.take()?;
+        let rtc_start = input.take()?;
+        let rtc_paused = input.take()?;
+
+        let mut bits = Bits::new(input);
+        let _padding = bits.take_u8(4)?;
+        let my_stuff_enabled = bits.take_bool()?;
+        let my_stuff_used = bits.take_bool()?;
+        let usb_gcn_enabled = bits.take_bool()?;
+        let dubious_intersection = bits.take_bool()?;
+
+        let mut input = bits.try_into_inner().unwrap();
+        let mut mushrooms = [input.take()?, input.take()?, input.take()?];
+        mushrooms.reverse();
+        let shortcut_definition_version = input.take()?;
+
+        let mut bits = Bits::new(input);
+        let cannon = bits.take_bool()?;
+        let oob = bits.take_bool()?;
+        let slowdown = bits.take_bool()?;
+        let rapidfire = bits.take_bool()?;
+        let dubious = bits.take_bool()?;
+        let replaced_mii_data = bits.take_bool()?;
+        let replaced_name = bits.take_bool()?;
+        let respawn = bits.take_bool()?;
+
+        let mut input = bits.try_into_inner().unwrap();
+        let category = input.take()?;
+
+        Ok(CtgpFooter {
+            track_sha1,
+            player_id,
+            true_time,
+            ctgp_version,
+            lap_dubious_intersections,
+            lap_true_times,
+            rtc_end,
+            rtc_start,
+            rtc_paused,
+            my_stuff_enabled,
+            my_stuff_used,
+            usb_gcn_enabled,
+            dubious_intersection,
+            mushrooms,
+            shortcut_definition_version,
+            cannon,
+            oob,
+            slowdown,
+            rapidfire,
+            dubious,
+            replaced_mii_data,
+            replaced_name,
+            respawn,
+            category,
         })
     }
 }

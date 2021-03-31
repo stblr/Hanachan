@@ -38,6 +38,18 @@ impl TakeFromSlice for u32 {
     }
 }
 
+impl TakeFromSlice for u64 {
+    fn take_from_slice(slice: &mut &[u8]) -> Result<u64, Error> {
+        if slice.len() < 8 {
+            return Err(Error {});
+        }
+        let (head, tail) = slice.split_at(8);
+        *slice = tail;
+        let head: [u8; 8] = head.try_into().unwrap();
+        Ok(u64::from_be_bytes(head))
+    }
+}
+
 impl TakeFromSlice for f32 {
     fn take_from_slice(slice: &mut &[u8]) -> Result<f32, Error> {
         slice.take::<u32>().map(f32::from_bits)
