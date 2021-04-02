@@ -75,6 +75,7 @@ f32 wii_sinf(f32 val) {
                 f_idx -= 65536.0f;
         }
         u16 idx = f_idx;
+        idx %= 256;
         f32 sin_f_idx = trig_table[idx][0] + (f_idx - (f32)idx) * trig_table[idx][2];
         if (val < 0.0f) {
                 return -sin_f_idx;
@@ -90,5 +91,6 @@ f32 wii_cosf(f32 val) {
                 f_idx -= 65536.0f;
         }
         u16 idx = f_idx;
+        idx %= 256;
         return trig_table[idx][1] + (f_idx - (f32)idx) * trig_table[idx][3];
 }
