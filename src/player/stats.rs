@@ -15,6 +15,10 @@ impl Stats {
             common: self.common + other,
         }
     }
+
+    pub fn wheel_count(&self) -> u8 {
+        self.vehicle.kind.wheel_count()
+    }
 }
 
 impl TakeFromSlice for Stats {
@@ -42,16 +46,27 @@ impl TakeFromSlice for VehicleStats {
 
 #[derive(Clone, Copy, Debug)]
 enum VehicleKind {
-    OutsideDriftingKart,
+    OutsideDriftingFourWheeledKart,
+    OutsideDriftingThreeWheeledKart,
     OutsideDriftingBike,
     InsideDriftingBike,
+}
+
+impl VehicleKind {
+    fn wheel_count(&self) -> u8 {
+        match self {
+            VehicleKind::OutsideDriftingFourWheeledKart => 4,
+            VehicleKind::OutsideDriftingThreeWheeledKart => 3,
+            _ => 2,
+        }
+    }
 }
 
 impl TakeFromSlice for VehicleKind {
     fn take_from_slice(slice: &mut &[u8]) -> Result<VehicleKind, take::Error> {
         match (slice.take::<u32>()?, slice.take::<u32>()?) {
-            (0, 0) => Ok(VehicleKind::OutsideDriftingKart),
-            (3, 0) => Ok(VehicleKind::OutsideDriftingKart),
+            (0, 0) => Ok(VehicleKind::OutsideDriftingFourWheeledKart),
+            (3, 0) => Ok(VehicleKind::OutsideDriftingThreeWheeledKart),
             (1, 1) => Ok(VehicleKind::OutsideDriftingBike),
             (2, 1) => Ok(VehicleKind::OutsideDriftingBike),
             (1, 2) => Ok(VehicleKind::InsideDriftingBike),

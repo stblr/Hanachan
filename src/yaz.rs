@@ -14,7 +14,7 @@ pub fn decompress(mut input: &[u8]) -> Result<Vec<u8>, Error> {
     let _reserved_0xc = input.take::<u32>()?;
 
     let mut group_header = input.take::<u8>()?;
-    let mut output = Vec::new();
+    let mut output = Vec::with_capacity(len);
     for group_shift in (0..8).rev().cycle() {
         if group_header >> group_shift & 1 != 0 {
             output.push(input.take::<u8>()?);

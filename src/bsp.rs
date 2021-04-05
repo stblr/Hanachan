@@ -1,13 +1,13 @@
+use crate::geom::Vec3;
 use crate::take::{self, Take, TakeFromSlice};
-use crate::vec3::Vec3;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Bsp {
-    initial_pos_y: f32,
-    hitboxes: [Option<Hitbox>; 16],
-    cuboids: [Vec3; 2],
-    rot_factor: f32,
-    wheels: [Wheel; 2],
+    pub initial_pos_y: f32,
+    pub hitboxes: [Option<Hitbox>; 16],
+    pub cuboids: [Vec3; 2],
+    pub rot_factor: f32,
+    pub wheels: [Wheel; 2],
 }
 
 impl Bsp {
@@ -33,8 +33,8 @@ impl Bsp {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Hitbox {
-    center: Vec3,
+pub struct Hitbox {
+    pos: Vec3,
     radius: f32,
     walls_only: bool,
 }
@@ -51,7 +51,7 @@ impl TakeFromSlice for Option<Hitbox> {
         }
         let _padding = slice.take::<u16>()?;
 
-        let center = slice.take()?;
+        let pos = slice.take()?;
         let radius = slice.take()?;
         let walls_only = match slice.take::<u16>()? {
             0 => false,
@@ -61,7 +61,7 @@ impl TakeFromSlice for Option<Hitbox> {
         let _wheel_idx = slice.take::<u16>()?;
 
         Ok(Some(Hitbox {
-            center,
+            pos,
             radius,
             walls_only,
         }))
@@ -69,13 +69,19 @@ impl TakeFromSlice for Option<Hitbox> {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Wheel {
-    distance_suspension: f32,
-    speed_suspension: f32,
-    slack_y: f32,
-    topmost_pos: Vec3,
-    wheel_radius: f32,
-    hitbox_radius: f32,
+pub struct Wheel {
+    pub dist_suspension: f32,
+    pub speed_suspension: f32,
+    pub slack_y: f32,
+    pub topmost_pos: Vec3,
+    pub wheel_radius: f32,
+    pub hitbox_radius: f32,
+}
+
+impl Wheel {
+    pub fn mirror_x_pos(&mut self) {
+        self.topmost_pos.x *= -1.0;
+    }
 }
 
 impl TakeFromSlice for Wheel {
@@ -85,17 +91,17 @@ impl TakeFromSlice for Wheel {
         }
         let _padding = slice.take::<u16>()?;
 
-        let distance_suspension = slice.take()?;
+        let dist_suspension = slice.take()?;
         let speed_suspension = slice.take()?;
         let slack_y = slice.take()?;
-        let _rot_x = slice.take::<f32>()?;
         let topmost_pos = slice.take()?;
+        let _rot_x = slice.take::<f32>()?;
         let wheel_radius = slice.take()?;
         let hitbox_radius = slice.take()?;
         let _unknown = slice.take::<u32>()?;
 
         Ok(Wheel {
-            distance_suspension,
+            dist_suspension,
             speed_suspension,
             slack_y,
             topmost_pos,

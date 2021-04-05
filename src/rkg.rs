@@ -33,10 +33,15 @@ impl Rkg {
 
         let _crc32 = input.take::<u32>()?;
 
-        let ctgp_footer = (!input.is_empty()).then(|| CtgpFooter::parse(input)).transpose()?;
-        println!("{:#x?}", ctgp_footer);
+        let ctgp_footer = (!input.is_empty())
+            .then(|| CtgpFooter::parse(input))
+            .transpose()?;
 
-        Ok(Rkg { header, frames, ctgp_footer })
+        Ok(Rkg {
+            header,
+            frames,
+            ctgp_footer,
+        })
     }
 
     fn parse_frames(mut input: &[u8]) -> Result<Vec<Frame>, Error> {
@@ -102,7 +107,11 @@ impl Rkg {
 
     pub fn accelerate(&self, frame: u32) -> bool {
         match frame.checked_sub(172) {
-            Some(frame) => self.frames.get(frame as usize).filter(|frame| frame.accelerate).is_some(),
+            Some(frame) => self
+                .frames
+                .get(frame as usize)
+                .filter(|frame| frame.accelerate)
+                .is_some(),
             None => false,
         }
     }

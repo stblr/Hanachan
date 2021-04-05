@@ -3,6 +3,7 @@ use core::iter;
 use std::fs;
 use std::path::Path;
 
+use crate::bike_parts_disp_param::BikePartsDispParam;
 use crate::bsp::{self, Bsp};
 use crate::driver_param::DriverParam;
 use crate::error;
@@ -215,6 +216,7 @@ impl NodeContent {
 
 #[derive(Clone, Debug)]
 pub enum File {
+    BikePartsDispParam(BikePartsDispParam),
     Bsp(Bsp),
     DriverParam(DriverParam),
     KartParam(KartParam),
@@ -223,7 +225,9 @@ pub enum File {
 
 impl File {
     fn parse(name: &str, mut input: &[u8]) -> Result<File, Error> {
-        if name == "driverParam.bin" {
+        if name == "bikePartsDispParam.bin" {
+            Ok(File::BikePartsDispParam(input.take()?))
+        } else if name == "driverParam.bin" {
             Ok(File::DriverParam(input.take()?))
         } else if name == "kartParam.bin" {
             Ok(File::KartParam(input.take()?))
@@ -231,6 +235,13 @@ impl File {
             Ok(File::Bsp(Bsp::parse(input)?))
         } else {
             Ok(File::Other)
+        }
+    }
+
+    pub fn as_bike_parts_disp_param(&self) -> Option<&BikePartsDispParam> {
+        match self {
+            File::BikePartsDispParam(bike_parts_disp_param) => Some(bike_parts_disp_param),
+            _ => None,
         }
     }
 
