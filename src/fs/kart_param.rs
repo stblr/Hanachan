@@ -1,7 +1,7 @@
 use std::iter;
 
+use crate::fs::{Error, Parse, ResultExt, SliceRefExt};
 use crate::player::{Stats, Vehicle};
-use crate::take::{self, Take, TakeFromSlice};
 
 #[derive(Clone, Debug)]
 pub struct KartParam {
@@ -14,13 +14,12 @@ impl KartParam {
     }
 }
 
-impl TakeFromSlice for KartParam {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<KartParam, take::Error> {
-        let vehicle_count = slice.take::<u32>()?;
-        if vehicle_count != 36 {
-            return Err(take::Error {});
-        }
-        let vehicles = iter::repeat_with(|| slice.take())
+impl Parse for KartParam {
+    fn parse(input: &mut &[u8]) -> Result<KartParam, Error> {
+        input
+            .take::<u32>()
+            .filter(|vehicle_count| *vehicle_count == 36)?;
+        let vehicles = iter::repeat_with(|| input.take())
             .take(36)
             .collect::<Result<_, _>>()?;
 

@@ -1,13 +1,7 @@
-use core::iter;
+use std::iter;
 
-use std::fs;
-use std::path::Path;
-
-use crate::error;
+use crate::fs::{yaz, Bits, Error, Parse, ResultExt, SliceExt, SliceRefExt};
 use crate::player::Params;
-use crate::slice_ext::SliceExt;
-use crate::take::{self, Bits, Take, TakeFromSlice};
-use crate::yaz;
 
 #[derive(Clone, Debug)]
 pub struct Rkg {
@@ -17,90 +11,6 @@ pub struct Rkg {
 }
 
 impl Rkg {
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<Rkg, error::Error> {
-        let input = fs::read(path)?;
-        Rkg::parse(&input).map_err(Into::into)
-    }
-
-    fn parse(input: &[u8]) -> Result<Rkg, Error> {
-        let (header_input, mut input) = input.try_split_at(0x88).ok_or(Error {})?;
-        let header = Header::parse(header_input)?;
-
-        let compressed_size = input.take::<u32>()? as usize;
-        let (compressed, mut input) = input.try_split_at(compressed_size).ok_or(Error {})?;
-        let decompressed = yaz::decompress(&compressed)?;
-        let frames = Rkg::parse_frames(&decompressed)?;
-
-        let _crc32 = input.take::<u32>()?;
-
-        let ctgp_footer = (!input.is_empty())
-            .then(|| CtgpFooter::parse(input))
-            .transpose()?;
-
-        Ok(Rkg {
-            header,
-            frames,
-            ctgp_footer,
-        })
-    }
-
-    fn parse_frames(mut input: &[u8]) -> Result<Vec<Frame>, Error> {
-        let face_button_input_count = input.take::<u16>()? as usize;
-        let direction_input_count = input.take::<u16>()? as usize;
-        let trick_input_count = input.take::<u16>()? as usize;
-        let _padding_0x6 = input.take::<u16>()?;
-
-        let (mut face_button_inputs, input) = input
-            .try_split_at(2 * face_button_input_count)
-            .ok_or(Error {})?;
-        let (mut direction_inputs, input) = input
-            .try_split_at(2 * direction_input_count)
-            .ok_or(Error {})?;
-        let (mut trick_inputs, input) =
-            input.try_split_at(2 * trick_input_count).ok_or(Error {})?;
-        if input.len() != 0 {
-            return Err(Error {});
-        }
-
-        let mut face_button_iter = iter::from_fn(|| {
-            let input = face_button_inputs.take::<u8>().ok()?;
-            let frame_count = face_button_inputs.take::<u8>().ok()? as usize;
-            Some(iter::repeat(input).take(frame_count))
-        })
-        .flatten();
-
-        let mut direction_iter = iter::from_fn(|| {
-            let input = direction_inputs.take::<u8>().ok()?;
-            let frame_count = direction_inputs.take::<u8>().ok()? as usize;
-            Some(iter::repeat(input).take(frame_count))
-        })
-        .flatten();
-
-        let mut trick_iter = iter::from_fn(|| {
-            let val = trick_inputs.take::<u16>().ok()?;
-            let input = (val >> 12) as u8;
-            let frame_count = (val & 0xfff) as usize;
-            Some(iter::repeat(input).take(frame_count))
-        })
-        .flatten();
-
-        let frames = face_button_iter
-            .by_ref()
-            .zip(direction_iter.by_ref())
-            .zip(trick_iter.by_ref())
-            .map(|((face_button, direction), trick)| Frame::new(face_button, direction, trick))
-            .collect::<Result<Vec<Frame>, Error>>()?;
-
-        if face_button_iter.next().is_some()
-            || direction_iter.next().is_some()
-            || trick_iter.next().is_some()
-        {
-            Err(Error {})
-        } else {
-            Ok(frames)
-        }
-    }
-
     pub fn header(&self) -> &Header {
         &self.header
     }
@@ -114,6 +24,27 @@ impl Rkg {
                 .is_some(),
             None => false,
         }
+    }
+}
+
+impl Parse for Rkg {
+    fn parse(input: &mut &[u8]) -> Result<Rkg, Error> {
+        let header = input.take()?;
+
+        let compressed_size = input.take::<u32>()? as usize;
+        let (compressed, mut input) = input.try_split_at(compressed_size).ok_or(Error {})?;
+        let mut decompressed: &[u8] = &yaz::decompress(&compressed)?;
+        let frames = decompressed.take()?;
+
+        let _crc32 = input.take::<u32>()?;
+
+        let ctgp_footer = (!input.is_empty()).then(|| input.take()).transpose()?;
+
+        Ok(Rkg {
+            header,
+            frames,
+            ctgp_footer,
+        })
     }
 }
 
@@ -132,34 +63,33 @@ pub struct Header {
 }
 
 impl Header {
-    fn parse(mut input: &[u8]) -> Result<Header, Error> {
-        let fourcc = input.take::<u32>()?;
-        if fourcc != u32::from_be_bytes(*b"RKGD") {
-            return Err(Error {});
-        }
+    pub fn params(&self) -> &Params {
+        &self.params
+    }
+}
+
+impl Parse for Header {
+    fn parse(input: &mut &[u8]) -> Result<Header, Error> {
+        input
+            .take::<u32>()
+            .filter(|fourcc| *fourcc == u32::from_be_bytes(*b"RKGD"))?;
 
         let time = input.take::<Time>()?;
 
         let mut bits = Bits::new(input);
-        let track = bits.take_u8(6)?;
+        let track = bits.take_u8(6).filter(|track| *track < 32)?;
         let _padding = bits.take_u8(2)?;
-        if track >= 0x20 {
-            return Err(Error {});
-        }
 
         let vehicle_id = bits.take_u8(6)?;
         let character_id = bits.take_u8(6)?;
-        let params = Params::try_from_raw(vehicle_id, character_id).ok_or(take::Error {})?;
+        let params = Params::try_from_raw(vehicle_id, character_id).ok_or(Error {})?;
 
         let year = 2000 + bits.take_u8(7)? as u16;
         let month = bits.take_u8(4)?;
         let day = bits.take_u8(5)?;
         // TODO validate
 
-        let controller = bits.take_u8(4)?;
-        if controller >= 4 {
-            return Err(Error {});
-        }
+        let controller = bits.take_u8(4).filter(|controller| *controller < 4)?;
 
         let _padding = bits.take_u8(4)?;
         let compressed = bits.take_bool()?;
@@ -172,16 +102,13 @@ impl Header {
         let _automatic = bits.take_bool()?;
         let _padding = bits.take_u8(1)?;
 
-        let mut input = bits.try_into_inner().unwrap();
+        *input = bits.try_into_inner().unwrap();
         let _decompressed_size = input.take::<u16>()?;
 
-        let lap_count = input.take::<u8>()?;
-        if lap_count > 9 {
-            return Err(Error {});
-        }
+        let lap_count = input.take::<u8>().filter(|lap_count| *lap_count <= 9)?;
         let lap_times = iter::repeat_with(|| input.take::<Time>())
             .take(lap_count as usize)
-            .collect::<Result<Vec<Time>, take::Error>>()?;
+            .collect::<Result<_, _>>()?;
         for _ in lap_count..9 {
             for _ in 0..3 {
                 let _unused = input.take::<u8>()?;
@@ -191,6 +118,8 @@ impl Header {
         for _ in 0..8 {
             let _padding = input.take::<u8>()?;
         }
+
+        input.skip(0x88 - 0x34)?;
 
         Ok(Header {
             time,
@@ -205,10 +134,6 @@ impl Header {
             lap_times,
         })
     }
-
-    pub fn params(&self) -> &Params {
-        &self.params
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -218,22 +143,20 @@ struct Time {
     milliseconds: u16,
 }
 
-impl TakeFromSlice for Time {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<Time, take::Error> {
-        let mut bits = Bits::new(slice);
-        let minutes = bits.take_u8(7)?;
-        let seconds = bits.take_u8(7)?;
-        let milliseconds = bits.take_u16(10)?;
-        *slice = bits.try_into_inner().unwrap();
-        if minutes >= 6 || seconds >= 60 || milliseconds >= 1000 {
-            Err(take::Error {})
-        } else {
-            Ok(Time {
-                minutes,
-                seconds,
-                milliseconds,
-            })
-        }
+impl Parse for Time {
+    fn parse(input: &mut &[u8]) -> Result<Time, Error> {
+        let mut bits = Bits::new(input);
+        let minutes = bits.take_u8(7).filter(|minutes| *minutes < 6)?;
+        let seconds = bits.take_u8(7).filter(|seconds| *seconds < 60)?;
+        let milliseconds = bits
+            .take_u16(10)
+            .filter(|milliseconds| *milliseconds < 1000)?;
+        *input = bits.try_into_inner().unwrap();
+        Ok(Time {
+            minutes,
+            seconds,
+            milliseconds,
+        })
     }
 }
 
@@ -280,6 +203,59 @@ impl Frame {
     }
 }
 
+impl Parse for Vec<Frame> {
+    fn parse(input: &mut &[u8]) -> Result<Vec<Frame>, Error> {
+        let face_button_input_count = input.take::<u16>()? as usize;
+        let direction_input_count = input.take::<u16>()? as usize;
+        let trick_input_count = input.take::<u16>()? as usize;
+        let _padding_0x6 = input.take::<u16>()?;
+
+        let (mut face_button_inputs, input) = input
+            .try_split_at(2 * face_button_input_count)
+            .ok_or(Error {})?;
+        let (mut direction_inputs, input) = input
+            .try_split_at(2 * direction_input_count)
+            .ok_or(Error {})?;
+        let (mut trick_inputs, input) =
+            input.try_split_at(2 * trick_input_count).ok_or(Error {})?;
+        if input.len() != 0 {
+            return Err(Error {});
+        }
+
+        let face_button_iter = iter::from_fn(|| {
+            let input = face_button_inputs.take::<u8>().ok()?;
+            let frame_count = face_button_inputs.take::<u8>().ok()? as usize;
+            Some(iter::repeat(input).take(frame_count))
+        })
+        .flatten();
+
+        let direction_iter = iter::from_fn(|| {
+            let input = direction_inputs.take::<u8>().ok()?;
+            let frame_count = direction_inputs.take::<u8>().ok()? as usize;
+            Some(iter::repeat(input).take(frame_count))
+        })
+        .flatten();
+
+        let trick_iter = iter::from_fn(|| {
+            let val = trick_inputs.take::<u16>().ok()?;
+            let input = (val >> 12) as u8;
+            let frame_count = (val & 0xfff) as usize;
+            Some(iter::repeat(input).take(frame_count))
+        })
+        .flatten();
+
+        let frames = face_button_iter
+            .zip(direction_iter)
+            .zip(trick_iter)
+            .map(|((face_button, direction), trick)| Frame::new(face_button, direction, trick))
+            .collect::<Result<_, _>>()?;
+
+        Ok(frames).filter(|_| {
+            face_button_inputs.is_empty() && direction_inputs.is_empty() && trick_inputs.is_empty()
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct CtgpFooter {
     track_sha1: [u32; 5],
@@ -308,8 +284,8 @@ struct CtgpFooter {
     category: u8,
 }
 
-impl CtgpFooter {
-    fn parse(mut input: &[u8]) -> Result<CtgpFooter, Error> {
+impl Parse for CtgpFooter {
+    fn parse(input: &mut &[u8]) -> Result<CtgpFooter, Error> {
         input.skip(0x48)?;
 
         let mut track_sha1 = [0; 5];
@@ -328,7 +304,7 @@ impl CtgpFooter {
         }
         let _padding = bits.take_u8(6)?;
 
-        let mut input = bits.try_into_inner().unwrap();
+        *input = bits.try_into_inner().unwrap();
         input.skip(0x12)?;
         let mut lap_true_times = [0.0; 10];
         for i in 0..10 {
@@ -347,7 +323,7 @@ impl CtgpFooter {
         let usb_gcn_enabled = bits.take_bool()?;
         let dubious_intersection = bits.take_bool()?;
 
-        let mut input = bits.try_into_inner().unwrap();
+        *input = bits.try_into_inner().unwrap();
         let mut mushrooms = [input.take()?, input.take()?, input.take()?];
         mushrooms.reverse();
         let shortcut_definition_version = input.take()?;
@@ -362,7 +338,7 @@ impl CtgpFooter {
         let replaced_name = bits.take_bool()?;
         let respawn = bits.take_bool()?;
 
-        let mut input = bits.try_into_inner().unwrap();
+        *input = bits.try_into_inner().unwrap();
         let category = input.take()?;
 
         Ok(CtgpFooter {
@@ -391,20 +367,5 @@ impl CtgpFooter {
             respawn,
             category,
         })
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Error {}
-
-impl From<take::Error> for Error {
-    fn from(_: take::Error) -> Error {
-        Error {}
-    }
-}
-
-impl From<yaz::Error> for Error {
-    fn from(_: yaz::Error) -> Error {
-        Error {}
     }
 }

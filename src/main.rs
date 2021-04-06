@@ -1,28 +1,16 @@
-mod bike_parts_disp_param;
-mod bsp;
-mod driver_param;
-mod error;
+mod fs;
 mod geom;
-mod kart_param;
 mod player;
 mod race;
-mod rkg;
-mod rkrd;
-mod slice_ext;
-mod take;
-mod u8;
 mod wii;
-mod yaz;
 
 use std::arch::x86_64;
 use std::env;
 use std::fmt::Debug;
 
+use crate::fs::{yaz, Rkrd, SliceRefExt};
 use crate::player::Player;
 use crate::race::Race;
-use crate::rkg::Rkg;
-use crate::rkrd::Rkrd;
-use crate::u8::U8;
 
 fn main() {
     #[cfg(target_feature = "sse")]
@@ -36,18 +24,39 @@ fn main() {
         return;
     }
 
-    let common_szs = match U8::open_szs(&args[1]) {
+    let common_szs = match std::fs::read(&args[1]) {
         Ok(common_szs) => common_szs,
         Err(_) => {
-            eprintln!("Couldn't load Common.szs");
+            eprintln!("Couldn't open Common.szs");
+            return;
+        }
+    };
+    let mut common_szs: &[u8] = &match yaz::decompress(&common_szs) {
+        Ok(common_szs) => common_szs,
+        Err(_) => {
+            eprintln!("Couldn't decompress Common.szs");
+            return;
+        }
+    };
+    let common_szs = match common_szs.take() {
+        Ok(common_szs) => common_szs,
+        Err(_) => {
+            eprintln!("Couldn't parse Common.szs");
             return;
         }
     };
 
-    let rkg = match Rkg::open(&args[2]) {
+    let mut rkg: &[u8] = &match std::fs::read(&args[2]) {
         Ok(rkg) => rkg,
         Err(_) => {
-            eprintln!("Couldn't load rkg");
+            eprintln!("Couldn't open rkg");
+            return;
+        }
+    };
+    let rkg = match rkg.take() {
+        Ok(rkg) => rkg,
+        Err(_) => {
+            eprintln!("Couldn't parse rkg");
             return;
         }
     };
@@ -60,10 +69,17 @@ fn main() {
         }
     };
 
-    let rkrd = match Rkrd::open(&args[3]) {
+    let mut rkrd: &[u8] = &match std::fs::read(&args[3]) {
         Ok(rkrd) => rkrd,
         Err(_) => {
-            eprintln!("Couldn't load rkrd");
+            eprintln!("Couldn't open rkrd");
+            return;
+        }
+    };
+    let rkrd = match rkrd.take::<Rkrd>() {
+        Ok(rkrd) => rkrd,
+        Err(_) => {
+            eprintln!("Couldn't parse rkrd");
             return;
         }
     };

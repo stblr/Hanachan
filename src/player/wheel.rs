@@ -1,4 +1,4 @@
-use crate::bsp;
+use crate::fs::BspWheel;
 use crate::geom::{Hitbox, Mat33, Mat34, Vec3};
 use crate::player::{Handle, Physics};
 use crate::wii::F32Ext;
@@ -6,7 +6,7 @@ use crate::wii::F32Ext;
 #[derive(Clone, Copy, Debug)]
 pub struct Wheel {
     handle: Option<Handle>,
-    bsp_wheel: bsp::Wheel,
+    bsp_wheel: BspWheel,
     axis_s: f32,
     pos: Vec3,
     last_pos_rel: Vec3,
@@ -15,7 +15,7 @@ pub struct Wheel {
 }
 
 impl Wheel {
-    pub fn new(handle: Option<Handle>, bsp_wheel: bsp::Wheel, player_pos: Vec3) -> Wheel {
+    pub fn new(handle: Option<Handle>, bsp_wheel: BspWheel, player_pos: Vec3) -> Wheel {
         // The initial position of bikes' front wheel is incorrect because the game doesn't take
         // the handle into account.
         let axis_s = bsp_wheel.slack_y;

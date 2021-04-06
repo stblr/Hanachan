@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 
-use crate::take::{self, Take, TakeFromSlice};
+use crate::fs::{Error, Parse, SliceRefExt};
 use crate::wii::F32Ext;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -142,8 +142,8 @@ impl Mul<Vec3> for f32 {
     }
 }
 
-impl TakeFromSlice for Vec3 {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<Vec3, take::Error> {
-        Ok(Vec3::new(slice.take()?, slice.take()?, slice.take()?))
+impl Parse for Vec3 {
+    fn parse(input: &mut &[u8]) -> Result<Vec3, Error> {
+        Ok(Vec3::new(input.take()?, input.take()?, input.take()?))
     }
 }

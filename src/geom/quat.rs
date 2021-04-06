@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign, Mul};
 
+use crate::fs::{Error, Parse, SliceRefExt};
 use crate::geom::Vec3;
-use crate::take::{self, Take, TakeFromSlice};
 use crate::wii::F32Ext;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -104,13 +104,13 @@ impl From<Quat> for Vec3 {
     }
 }
 
-impl TakeFromSlice for Quat {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<Quat, take::Error> {
+impl Parse for Quat {
+    fn parse(input: &mut &[u8]) -> Result<Quat, Error> {
         Ok(Quat::new(
-            slice.take()?,
-            slice.take()?,
-            slice.take()?,
-            slice.take()?,
+            input.take()?,
+            input.take()?,
+            input.take()?,
+            input.take()?,
         ))
     }
 }

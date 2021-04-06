@@ -1,6 +1,6 @@
-use core::ops::Add;
+use std::ops::Add;
 
-use crate::take::{self, Take, TakeFromSlice};
+use crate::fs::{Error, Parse, SliceRefExt};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Stats {
@@ -21,11 +21,11 @@ impl Stats {
     }
 }
 
-impl TakeFromSlice for Stats {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<Stats, take::Error> {
+impl Parse for Stats {
+    fn parse(input: &mut &[u8]) -> Result<Stats, Error> {
         Ok(Stats {
-            vehicle: slice.clone().take()?,
-            common: slice.take()?,
+            vehicle: input.clone().take()?,
+            common: input.take()?,
         })
     }
 }
@@ -35,10 +35,10 @@ struct VehicleStats {
     kind: VehicleKind,
 }
 
-impl TakeFromSlice for VehicleStats {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<VehicleStats, take::Error> {
-        let kind = slice.take()?;
-        slice.skip(0x18c - 0x8)?;
+impl Parse for VehicleStats {
+    fn parse(input: &mut &[u8]) -> Result<VehicleStats, Error> {
+        let kind = input.take()?;
+        input.skip(0x18c - 0x8)?;
 
         Ok(VehicleStats { kind })
     }
@@ -62,16 +62,16 @@ impl VehicleKind {
     }
 }
 
-impl TakeFromSlice for VehicleKind {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<VehicleKind, take::Error> {
-        match (slice.take::<u32>()?, slice.take::<u32>()?) {
+impl Parse for VehicleKind {
+    fn parse(input: &mut &[u8]) -> Result<VehicleKind, Error> {
+        match (input.take::<u32>()?, input.take::<u32>()?) {
             (0, 0) => Ok(VehicleKind::OutsideDriftingFourWheeledKart),
             (3, 0) => Ok(VehicleKind::OutsideDriftingThreeWheeledKart),
             (1, 1) => Ok(VehicleKind::OutsideDriftingBike),
             (2, 1) => Ok(VehicleKind::OutsideDriftingBike),
             (1, 2) => Ok(VehicleKind::InsideDriftingBike),
             (2, 2) => Ok(VehicleKind::InsideDriftingBike),
-            _ => Err(take::Error {}),
+            _ => Err(Error {}),
         }
     }
 }
@@ -93,25 +93,25 @@ pub struct CommonStats {
     drift_reactivity: f32,
 }
 
-impl TakeFromSlice for CommonStats {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<CommonStats, take::Error> {
-        slice.skip(0x10)?;
-        let weight = slice.take()?;
-        slice.skip(0x4)?;
-        let base_speed = slice.take()?;
-        let handling_speed_multiplier = slice.take()?;
-        slice.skip(0x4)?;
-        let acceleration_ys = [slice.take()?, slice.take()?, slice.take()?, slice.take()?];
-        let acceleration_xs = [slice.take()?, slice.take()?, slice.take()?];
-        let drift_acceleration_ys = [slice.take()?, slice.take()?];
-        let drift_acceleration_xs = [slice.take()?];
-        let manual_handling_tightness = slice.take()?;
-        let automatic_handling_tightness = slice.take()?;
-        let handling_reactivity = slice.take()?;
-        let manual_drift_tightness = slice.take()?;
-        let automatic_drift_tightness = slice.take()?;
-        let drift_reactivity = slice.take()?;
-        slice.skip(0x18c - 0x64)?;
+impl Parse for CommonStats {
+    fn parse(input: &mut &[u8]) -> Result<CommonStats, Error> {
+        input.skip(0x10)?;
+        let weight = input.take()?;
+        input.skip(0x4)?;
+        let base_speed = input.take()?;
+        let handling_speed_multiplier = input.take()?;
+        input.skip(0x4)?;
+        let acceleration_ys = [input.take()?, input.take()?, input.take()?, input.take()?];
+        let acceleration_xs = [input.take()?, input.take()?, input.take()?];
+        let drift_acceleration_ys = [input.take()?, input.take()?];
+        let drift_acceleration_xs = [input.take()?];
+        let manual_handling_tightness = input.take()?;
+        let automatic_handling_tightness = input.take()?;
+        let handling_reactivity = input.take()?;
+        let manual_drift_tightness = input.take()?;
+        let automatic_drift_tightness = input.take()?;
+        let drift_reactivity = input.take()?;
+        input.skip(0x18c - 0x64)?;
 
         Ok(CommonStats {
             weight,

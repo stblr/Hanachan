@@ -1,7 +1,7 @@
-use core::iter;
+use std::iter;
 
+use crate::fs::{Error, Parse, ResultExt, SliceRefExt};
 use crate::player::{Character, CommonStats};
-use crate::take::{self, Take, TakeFromSlice};
 
 #[derive(Clone, Debug)]
 pub struct DriverParam {
@@ -14,13 +14,12 @@ impl DriverParam {
     }
 }
 
-impl TakeFromSlice for DriverParam {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<DriverParam, take::Error> {
-        let character_count = slice.take::<u32>()?;
-        if character_count != 27 {
-            return Err(take::Error {});
-        }
-        let characters = iter::repeat_with(|| slice.take())
+impl Parse for DriverParam {
+    fn parse(input: &mut &[u8]) -> Result<DriverParam, Error> {
+        input
+            .take::<u32>()
+            .filter(|character_count| *character_count == 27)?;
+        let characters = iter::repeat_with(|| input.take())
             .take(27)
             .collect::<Result<_, _>>()?;
 

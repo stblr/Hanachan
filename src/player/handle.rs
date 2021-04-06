@@ -1,5 +1,5 @@
+use crate::fs::{Error, Parse, SliceRefExt};
 use crate::geom::Vec3;
-use crate::take::{self, Take, TakeFromSlice};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Handle {
@@ -17,11 +17,11 @@ impl Handle {
     }
 }
 
-impl TakeFromSlice for Handle {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<Handle, take::Error> {
+impl Parse for Handle {
+    fn parse(input: &mut &[u8]) -> Result<Handle, Error> {
         Ok(Handle {
-            pos: slice.take()?,
-            angles: slice.take::<Vec3>()?.to_radians(),
+            pos: input.take()?,
+            angles: input.take::<Vec3>()?.to_radians(),
         })
     }
 }

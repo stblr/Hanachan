@@ -1,15 +1,8 @@
-use core::iter;
+use std::iter;
 
-use std::fs;
-use std::path::Path;
-
-use crate::bike_parts_disp_param::BikePartsDispParam;
-use crate::bsp::{self, Bsp};
-use crate::driver_param::DriverParam;
-use crate::error;
-use crate::kart_param::KartParam;
-use crate::take::{self, Take, TakeFromSlice, TakeIter};
-use crate::yaz;
+use crate::fs::{
+    BikePartsDispParam, Bsp, DriverParam, Error, KartParam, Parse, ResultExt, SliceExt, SliceRefExt,
+};
 
 #[derive(Clone, Debug)]
 pub struct U8 {
@@ -17,74 +10,6 @@ pub struct U8 {
 }
 
 impl U8 {
-    pub fn open_szs<P: AsRef<Path>>(path: P) -> Result<U8, error::Error> {
-        let compressed = fs::read(path)?;
-        let decompressed = yaz::decompress(&compressed)?;
-        U8::parse(&decompressed).map_err(Into::into)
-    }
-
-    fn parse(mut input: &[u8]) -> Result<U8, Error> {
-        let fourcc = input.take::<u32>()?;
-        if fourcc != u32::from_be_bytes(*b"U\xaa8-") {
-            return Err(Error {});
-        }
-
-        let first_node_offset = input.take::<u32>()? as usize;
-        if first_node_offset != 0x20 {
-            return Err(Error {});
-        }
-
-        let fs_size = input.take::<u32>()? as usize;
-        let mut file_data_offset = (input.take::<u32>()? as usize)
-            .checked_sub(0x20)
-            .ok_or(Error {})?;
-        if fs_size > file_data_offset {
-            return Err(Error {});
-        }
-
-        for _ in 0..4 {
-            let _reserved = input.take::<u32>()?;
-        }
-
-        let mut node_iter = TakeIter::new(input).peekable();
-        let root: RawNode = *node_iter.peek().ok_or(Error {})?;
-        let node_count = match root.content {
-            RawNodeContent::Directory { next, .. } => next,
-            _ => return Err(Error {}),
-        };
-        let node_iter = node_iter.take(node_count);
-
-        let name_pool = input.get(0xc * node_count..fs_size).ok_or(Error {})?;
-        let name_iter = TakeIter::new(name_pool).scan(0, |offset, name: String| {
-            let start_offset = *offset;
-            *offset += name.len() + 1;
-            Some((start_offset, name))
-        });
-
-        let file_data = input.get(file_data_offset..).ok_or(Error {})?;
-        file_data_offset += 0x20;
-
-        let nodes = node_iter
-            .zip(name_iter)
-            .try_fold::<_, _, Result<Vec<Node>, Error>>(
-                vec![],
-                |mut nodes, (raw, (name_offset, name))| {
-                    let node = Node::try_from_raw(
-                        raw,
-                        name_offset,
-                        name,
-                        file_data_offset,
-                        file_data,
-                        &nodes,
-                    )?;
-                    nodes.push(node);
-                    Ok(nodes)
-                },
-            )?;
-
-        Ok(U8 { nodes })
-    }
-
     pub fn get_node(&self, path: &str) -> Option<&Node> {
         let mut path_iter = path.split("/");
         let index =
@@ -110,6 +35,74 @@ impl U8 {
     }
 }
 
+impl Parse for U8 {
+    fn parse(input: &mut &[u8]) -> Result<U8, Error> {
+        input
+            .take::<u32>()
+            .filter(|fourcc| *fourcc == u32::from_be_bytes(*b"U\xaa8-"))?;
+        input
+            .take::<u32>()
+            .filter(|first_node_offset| *first_node_offset == 0x20)?;
+
+        let fs_size = input.take::<u32>()? as usize;
+        let mut file_data_offset = (input.take::<u32>()? as usize)
+            .checked_sub(0x20)
+            .ok_or(Error {})
+            .filter(|file_data_offset| *file_data_offset >= fs_size)?;
+
+        for _ in 0..4 {
+            let _reserved = input.take::<u32>()?;
+        }
+
+        let root = input.clone().take::<RawNode>()?;
+        let node_count = match root.content {
+            RawNodeContent::Directory { next, .. } => next,
+            _ => return Err(Error {}),
+        };
+
+        let (mut nodes_input, input) = input.try_split_at(0xc * node_count).ok_or(Error {})?;
+        let node_iter = iter::repeat_with(|| nodes_input.take());
+
+        let names_size = fs_size.checked_sub(0xc * node_count).ok_or(Error {})?;
+        let (mut names_input, input) = input.try_split_at(names_size).ok_or(Error {})?;
+        let name_iter =
+            iter::repeat_with(|| names_input.take()).scan(0, |offset, name: Result<String, _>| {
+                match name {
+                    Ok(name) => {
+                        let start_offset = *offset;
+                        *offset += name.len() + 1;
+                        Some(Ok((start_offset, name)))
+                    }
+                    Err(e) => Some(Err(e)),
+                }
+            });
+
+        let (_padding, file_data) = input
+            .try_split_at(file_data_offset - fs_size)
+            .ok_or(Error {})?;
+        file_data_offset += 0x20;
+
+        let nodes = node_iter
+            .zip(name_iter)
+            .take(node_count)
+            .try_fold::<_, _, _>(vec![], |mut nodes, (raw, name)| {
+                let (name_offset, name) = name?;
+                let node = Node::try_from_raw(
+                    raw?,
+                    name_offset,
+                    name,
+                    file_data_offset,
+                    file_data,
+                    &nodes,
+                )?;
+                nodes.push(node);
+                Ok(nodes)
+            })?;
+
+        Ok(U8 { nodes }).filter(|_| nodes_input.is_empty() && names_input.is_empty())
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct RawNode {
     name_offset: usize,
@@ -122,20 +115,20 @@ enum RawNodeContent {
     Directory { parent: usize, next: usize },
 }
 
-impl TakeFromSlice for RawNode {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<RawNode, take::Error> {
-        let val = slice.take::<u32>()? as usize;
+impl Parse for RawNode {
+    fn parse(input: &mut &[u8]) -> Result<RawNode, Error> {
+        let val = input.take::<u32>()? as usize;
         let name_offset = val & 0xffffff;
         let content = match val >> 24 {
             0 => RawNodeContent::File {
-                offset: slice.take::<u32>()? as usize,
-                size: slice.take::<u32>()? as usize,
+                offset: input.take::<u32>()? as usize,
+                size: input.take::<u32>()? as usize,
             },
             1 => RawNodeContent::Directory {
-                parent: slice.take::<u32>()? as usize,
-                next: slice.take::<u32>()? as usize,
+                parent: input.take::<u32>()? as usize,
+                next: input.take::<u32>()? as usize,
             },
-            _ => return Err(take::Error {}),
+            _ => return Err(Error {}),
         };
         Ok(RawNode {
             name_offset,
@@ -232,7 +225,7 @@ impl File {
         } else if name == "kartParam.bin" {
             Ok(File::KartParam(input.take()?))
         } else if name.ends_with(".bsp") {
-            Ok(File::Bsp(Bsp::parse(input)?))
+            Ok(File::Bsp(input.take()?))
         } else {
             Ok(File::Other)
         }
@@ -264,21 +257,5 @@ impl File {
             File::KartParam(kart_param) => Some(kart_param),
             _ => None,
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Error {}
-
-impl From<take::Error> for Error {
-    fn from(_: take::Error) -> Error {
-        Error {}
-    }
-}
-
-// TODO proper error handling
-impl From<bsp::Error> for Error {
-    fn from(_: bsp::Error) -> Error {
-        Error {}
     }
 }

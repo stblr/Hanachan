@@ -8,10 +8,9 @@ pub use handle::Handle;
 pub use params::{Character, Params, Vehicle};
 pub use stats::{CommonStats, Stats};
 
+use crate::fs::{Rkg, U8};
 use crate::geom::Vec3;
 use crate::race::{Race, Stage};
-use crate::rkg::Rkg;
-use crate::u8::U8;
 
 use physics::Physics;
 use wheel::Wheel;

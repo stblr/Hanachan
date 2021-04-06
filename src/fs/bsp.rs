@@ -1,5 +1,5 @@
+use crate::fs::{Error, Parse, ResultExt, SliceRefExt};
 use crate::geom::Vec3;
-use crate::take::{self, Take, TakeFromSlice};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Bsp {
@@ -10,8 +10,8 @@ pub struct Bsp {
     pub wheels: [Wheel; 2],
 }
 
-impl Bsp {
-    pub fn parse(mut input: &[u8]) -> Result<Bsp, Error> {
+impl Parse for Bsp {
+    fn parse(input: &mut &[u8]) -> Result<Bsp, Error> {
         let initial_pos_y = input.take()?;
         let mut hitboxes = [None; 16];
         for i in 0..16 {
@@ -39,26 +39,26 @@ pub struct Hitbox {
     walls_only: bool,
 }
 
-impl TakeFromSlice for Option<Hitbox> {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<Option<Hitbox>, take::Error> {
-        match slice.take::<u16>()? {
+impl Parse for Option<Hitbox> {
+    fn parse(input: &mut &[u8]) -> Result<Option<Hitbox>, Error> {
+        match input.take::<u16>()? {
             0 => {
-                slice.skip(0x16)?;
+                input.skip(0x16)?;
                 return Ok(None);
             }
             1 => (),
-            _ => return Err(take::Error {}),
+            _ => return Err(Error {}),
         }
-        let _padding = slice.take::<u16>()?;
+        let _padding = input.take::<u16>()?;
 
-        let pos = slice.take()?;
-        let radius = slice.take()?;
-        let walls_only = match slice.take::<u16>()? {
+        let pos = input.take()?;
+        let radius = input.take()?;
+        let walls_only = match input.take::<u16>()? {
             0 => false,
             1 => true,
-            _ => return Err(take::Error {}),
+            _ => return Err(Error {}),
         };
-        let _wheel_idx = slice.take::<u16>()?;
+        let _wheel_idx = input.take::<u16>()?;
 
         Ok(Some(Hitbox {
             pos,
@@ -84,21 +84,19 @@ impl Wheel {
     }
 }
 
-impl TakeFromSlice for Wheel {
-    fn take_from_slice(slice: &mut &[u8]) -> Result<Wheel, take::Error> {
-        if slice.take::<u16>()? != 1 {
-            return Err(take::Error {});
-        }
-        let _padding = slice.take::<u16>()?;
+impl Parse for Wheel {
+    fn parse(input: &mut &[u8]) -> Result<Wheel, Error> {
+        input.take::<u16>().filter(|enable| *enable == 1)?;
+        let _padding = input.take::<u16>()?;
 
-        let dist_suspension = slice.take()?;
-        let speed_suspension = slice.take()?;
-        let slack_y = slice.take()?;
-        let topmost_pos = slice.take()?;
-        let _rot_x = slice.take::<f32>()?;
-        let wheel_radius = slice.take()?;
-        let hitbox_radius = slice.take()?;
-        let _unknown = slice.take::<u32>()?;
+        let dist_suspension = input.take()?;
+        let speed_suspension = input.take()?;
+        let slack_y = input.take()?;
+        let topmost_pos = input.take()?;
+        let _rot_x = input.take::<f32>()?;
+        let wheel_radius = input.take()?;
+        let hitbox_radius = input.take()?;
+        let _unknown = input.take::<u32>()?;
 
         Ok(Wheel {
             dist_suspension,
@@ -108,14 +106,5 @@ impl TakeFromSlice for Wheel {
             wheel_radius,
             hitbox_radius,
         })
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Error {}
-
-impl From<take::Error> for Error {
-    fn from(_: take::Error) -> Error {
-        Error {}
     }
 }

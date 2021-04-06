@@ -1,12 +1,11 @@
-use crate::take::{self, Take};
+use crate::fs::{Error, ResultExt, SliceRefExt};
 
 pub fn decompress(mut input: &[u8]) -> Result<Vec<u8>, Error> {
-    let fourcc = input.take::<u32>()?;
     let yaz0 = u32::from_be_bytes(*b"Yaz0");
     let yaz1 = u32::from_be_bytes(*b"Yaz1");
-    if fourcc != yaz0 && fourcc != yaz1 {
-        return Err(Error {});
-    }
+    input
+        .take::<u32>()
+        .filter(|fourcc| *fourcc == yaz0 || *fourcc == yaz1)?;
 
     let len = input.take::<u32>()? as usize;
 
@@ -45,12 +44,4 @@ pub fn decompress(mut input: &[u8]) -> Result<Vec<u8>, Error> {
     }
 
     unreachable!()
-}
-
-pub struct Error {}
-
-impl From<take::Error> for Error {
-    fn from(_: take::Error) -> Error {
-        Error {}
-    }
 }
