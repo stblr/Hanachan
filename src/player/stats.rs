@@ -4,8 +4,8 @@ use crate::fs::{Error, Parse, SliceRefExt};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Stats {
-    vehicle: VehicleStats,
-    common: CommonStats,
+    pub vehicle: VehicleStats,
+    pub common: CommonStats,
 }
 
 impl Stats {
@@ -14,10 +14,6 @@ impl Stats {
             vehicle: self.vehicle,
             common: self.common + other,
         }
-    }
-
-    pub fn wheel_count(&self) -> u8 {
-        self.vehicle.kind.wheel_count()
     }
 }
 
@@ -31,8 +27,8 @@ impl Parse for Stats {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct VehicleStats {
-    kind: VehicleKind,
+pub struct VehicleStats {
+    pub kind: VehicleKind,
 }
 
 impl Parse for VehicleStats {
@@ -45,7 +41,7 @@ impl Parse for VehicleStats {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum VehicleKind {
+pub enum VehicleKind {
     OutsideDriftingFourWheeledKart,
     OutsideDriftingThreeWheeledKart,
     OutsideDriftingBike,
@@ -53,11 +49,21 @@ enum VehicleKind {
 }
 
 impl VehicleKind {
-    fn wheel_count(&self) -> u8 {
+    pub fn is_bike(&self) -> bool {
+        match self {
+            VehicleKind::OutsideDriftingFourWheeledKart => false,
+            VehicleKind::OutsideDriftingThreeWheeledKart => false,
+            VehicleKind::OutsideDriftingBike => true,
+            VehicleKind::InsideDriftingBike => true,
+        }
+    }
+
+    pub fn wheel_count(&self) -> u8 {
         match self {
             VehicleKind::OutsideDriftingFourWheeledKart => 4,
             VehicleKind::OutsideDriftingThreeWheeledKart => 3,
-            _ => 2,
+            VehicleKind::OutsideDriftingBike => 2,
+            VehicleKind::InsideDriftingBike => 2,
         }
     }
 }

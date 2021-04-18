@@ -58,7 +58,7 @@ impl Physics {
         Mat34::from_quat_and_pos(self.rot1, self.pos)
     }
 
-    pub fn update(&mut self, wheels: &Vec<Wheel>) {
+    pub fn update(&mut self, is_bike: bool, wheels: &Vec<Wheel>) {
         self.floor_nor = wheels
             .iter()
             .filter_map(|wheel| wheel.floor_nor)
@@ -68,8 +68,13 @@ impl Physics {
 
         self.dir = Vec3::BACK.normalize(); // FIXME hack
 
-        // TODO handle karts and later stages
-        self.vel0 = self.vel0.rej_unit(self.floor_nor);
+        // TODO handle later stages
+        if is_bike {
+            self.vel0 = self.vel0.rej_unit(self.floor_nor);
+        } else {
+            self.vel0.x = 0.0;
+            self.vel0.z = 0.0;
+        }
         self.vel0.y += self.normal_acceleration - 1.3;
         self.normal_acceleration = 0.0;
         self.vel0 = 0.998 * self.vel0;
@@ -90,7 +95,9 @@ impl Physics {
         let normal_rot_vec = 0.5 * (tmp0 + tmp1);
         self.rot_vec0 += normal_rot_vec;
         self.normal_rot_vec = Vec3::ZERO;
-        self.rot_vec0.z = 0.0; // TODO handle karts
+        if is_bike {
+            self.rot_vec0.z = 0.0;
+        }
 
         let rot_vec = self.rot_factor * self.rot_vec0;
         if rot_vec.sq_norm() > f32::EPSILON {

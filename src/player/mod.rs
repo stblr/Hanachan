@@ -17,6 +17,7 @@ use wheel::Wheel;
 
 #[derive(Clone, Debug)]
 pub struct Player {
+    stats: Stats,
     rkg: Rkg,
     start_boost_charge: f32,
     physics: Physics,
@@ -57,7 +58,7 @@ impl Player {
             .as_bike_parts_disp_param()?;
         let handle = bike_parts_disp_param.vehicle(*params.vehicle());
 
-        let wheel_count = stats.wheel_count();
+        let wheel_count = stats.vehicle.kind.wheel_count();
         let wheels = (0..4)
             .filter(|i| wheel_count != 2 || i % 2 == 0)
             .filter(|i| wheel_count != 3 || *i != 0)
@@ -72,6 +73,7 @@ impl Player {
             .collect();
 
         Some(Player {
+            stats,
             rkg,
             start_boost_charge: 0.0,
             physics,
@@ -88,7 +90,8 @@ impl Player {
             self.update_start_boost_charge(race);
         }
 
-        self.physics.update(&self.wheels);
+        let is_bike = self.stats.vehicle.kind.is_bike();
+        self.physics.update(is_bike, &self.wheels);
 
         for wheel in &mut self.wheels {
             wheel.update(&mut self.physics);
