@@ -15,6 +15,7 @@ pub struct Physics {
     pub vel: Vec3,
     pub normal_rot_vec: Vec3,
     pub rot_vec0: Vec3,
+    pub rot_vec2: Vec3,
     pub rot0: Quat,
     pub rot1: Quat,
 }
@@ -49,6 +50,7 @@ impl Physics {
             vel: Vec3::ZERO,
             normal_rot_vec: Vec3::ZERO,
             rot_vec0: Vec3::ZERO,
+            rot_vec2: Vec3::ZERO,
             rot0: Quat::BACK,
             rot1: Quat::BACK,
         }
@@ -99,13 +101,31 @@ impl Physics {
             self.rot_vec0.z = 0.0;
         }
 
-        let rot_vec = self.rot_factor * self.rot_vec0;
+        let rot_vec = self.rot_factor * self.rot_vec0 + self.rot_vec2;
         if rot_vec.sq_norm() > f32::EPSILON {
             self.rot0 += 0.5 * (self.rot0 * Quat::from(rot_vec));
-            self.rot0 = self.rot0.normalize();
+            self.rot0 = if self.rot0.sq_norm() >= f32::EPSILON {
+                self.rot0.normalize()
+            } else {
+                Quat::IDENTITY
+            };
         }
+        self.stabilize();
+        self.rot0 = if self.rot0.sq_norm() >= f32::EPSILON {
+            self.rot0.normalize()
+        } else {
+            Quat::IDENTITY
+        };
 
-        self.rot0 = self.rot0.normalize();
         self.rot1 = self.rot0.normalize();
+    }
+
+    fn stabilize(&mut self) {
+        // TODO handle bikes
+        let up = self.rot0.rotate(Vec3::UP);
+        if self.floor_nor.dot(up).abs() < 0.9999 {
+            let rot = Quat::from_vecs(up, self.floor_nor);
+            self.rot0 = self.rot0.slerp_to(rot * self.rot0, 0.1);
+        }
     }
 }

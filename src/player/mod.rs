@@ -20,6 +20,7 @@ pub struct Player {
     stats: Stats,
     rkg: Rkg,
     start_boost_charge: f32,
+    standstill_boost_rot: f32,
     physics: Physics,
     wheels: Vec<Wheel>,
 }
@@ -76,6 +77,7 @@ impl Player {
             stats,
             rkg,
             start_boost_charge: 0.0,
+            standstill_boost_rot: 0.0,
             physics,
             wheels,
         })
@@ -90,7 +92,15 @@ impl Player {
             self.update_start_boost_charge(race);
         }
 
+        self.update_standstill_boost_rot();
+
         let is_bike = self.stats.vehicle.kind.is_bike();
+        if is_bike {
+            self.physics.rot_vec2.x += self.standstill_boost_rot;
+        } else {
+            self.physics.rot_vec0.x += self.standstill_boost_rot;
+        }
+
         self.physics.update(is_bike, &self.wheels);
 
         for wheel in &mut self.wheels {
@@ -105,5 +115,9 @@ impl Player {
             self.start_boost_charge *= 0.96;
         }
         self.start_boost_charge = self.start_boost_charge.clamp(0.0, 1.0);
+    }
+
+    fn update_standstill_boost_rot(&mut self) {
+        self.standstill_boost_rot += 0.015 * -self.start_boost_charge - self.standstill_boost_rot;
     }
 }

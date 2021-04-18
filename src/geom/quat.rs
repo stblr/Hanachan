@@ -13,10 +13,26 @@ pub struct Quat {
 }
 
 impl Quat {
+    pub const IDENTITY: Quat = Quat::new(0.0, 0.0, 0.0, 1.0);
     pub const BACK: Quat = Quat::new(0.0, 1.0, 0.0, 0.0);
 
     pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Quat {
         Quat { x, y, z, w }
+    }
+
+    pub fn from_vecs(from: Vec3, to: Vec3) -> Quat {
+        let s = (2.0 * (from.dot(to) + 1.0)).wii_sqrt();
+        if s <= f32::EPSILON {
+            return Quat::IDENTITY;
+        }
+        let recip = 1.0 / s;
+        let cross = from.cross(to);
+        Quat {
+            x: recip * cross.x,
+            y: recip * cross.y,
+            z: recip * cross.z,
+            w: 0.5 * s,
+        }
     }
 
     pub fn invert(self) -> Quat {
@@ -28,8 +44,16 @@ impl Quat {
         }
     }
 
+    pub fn dot(self, other: Quat) -> f32 {
+        self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w
+    }
+
+    pub fn sq_norm(self) -> f32 {
+        self.dot(self)
+    }
+
     pub fn normalize(self) -> Quat {
-        let sq_norm = self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w;
+        let sq_norm = self.sq_norm();
         if sq_norm <= f32::EPSILON {
             self
         } else {
@@ -44,6 +68,25 @@ impl Quat {
 
     pub fn inv_rotate(self, v: Vec3) -> Vec3 {
         Vec3::from(self.invert() * Quat::from(v) * self)
+    }
+
+    pub fn slerp_to(self, other: Quat, t: f32) -> Quat {
+        let dot = self.dot(other).clamp(-1.0, 1.0);
+        let angle = dot.abs().acos(); // TODO wii_acos?
+        let sin = angle.wii_sin();
+
+        let (s, t) = if sin.abs() >= 1e-5 {
+            let recip = 1.0 / sin;
+            let s = recip * (angle - t * angle).wii_sin();
+            let t = recip * (t * angle).wii_sin();
+            (s, t)
+        } else {
+            (1.0 - t, t)
+        };
+
+        let t = dot.signum() * t;
+
+        s * self + t * other
     }
 }
 
