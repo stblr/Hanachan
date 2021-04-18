@@ -89,6 +89,7 @@ fn main() {
     for frame in rkrd.frames() {
         player.update(&race);
         let physics = player.physics();
+        desync = check_val("FLOOR_NOR", race.frame(), physics.floor_nor, frame.floor_nor) || desync;
         desync = check_val("DIR", race.frame(), physics.dir, frame.dir) || desync;
         desync = check_val("POS", race.frame(), physics.pos, frame.pos) || desync;
         desync = check_val("VEL0", race.frame(), physics.vel0, frame.vel0) || desync;

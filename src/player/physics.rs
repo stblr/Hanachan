@@ -7,6 +7,7 @@ use crate::player::Wheel;
 pub struct Physics {
     pub inv_inertia_tensor: Mat34,
     pub rot_factor: f32,
+    pub floor_nor: Vec3,
     pub dir: Vec3,
     pub pos: Vec3,
     pub normal_acceleration: f32,
@@ -40,6 +41,7 @@ impl Physics {
         Physics {
             inv_inertia_tensor,
             rot_factor,
+            floor_nor: Vec3::UP,
             dir: Vec3::BACK,
             pos,
             normal_acceleration: 0.0,
@@ -57,7 +59,7 @@ impl Physics {
     }
 
     pub fn update(&mut self, wheels: &Vec<Wheel>) {
-        let floor_nor = wheels
+        self.floor_nor = wheels
             .iter()
             .filter_map(|wheel| wheel.floor_nor)
             .reduce(Add::add)
@@ -67,7 +69,7 @@ impl Physics {
         self.dir = Vec3::BACK.normalize(); // FIXME hack
 
         // TODO handle karts and later stages
-        self.vel0 = self.vel0.rej_unit(floor_nor);
+        self.vel0 = self.vel0.rej_unit(self.floor_nor);
         self.vel0.y += self.normal_acceleration - 1.3;
         self.normal_acceleration = 0.0;
         self.vel0 = 0.998 * self.vel0;

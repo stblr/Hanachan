@@ -6,13 +6,17 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define ADDRESS_COUNT 29
+#define ADDRESS_COUNT 38
 
 const char *const addresses[ADDRESS_COUNT] = {
         // intro timer
         "9bd730 1c",
         // main timer
         "9bd730 20",
+        // floor_nor
+        "9c18f8 20 0 10 10 44",
+        "9c18f8 20 0 10 10 48",
+        "9c18f8 20 0 10 10 4c",
         // dir
         "9c18f8 20 0 10 10 5c",
         "9c18f8 20 0 10 10 60",
@@ -21,13 +25,17 @@ const char *const addresses[ADDRESS_COUNT] = {
         "9c18f8 20 0 24 90 4 68",
         "9c18f8 20 0 24 90 4 6c",
         "9c18f8 20 0 24 90 4 70",
-        // speed0
+        // vel0
         "9c18f8 20 0 24 90 4 74",
         "9c18f8 20 0 24 90 4 78",
         "9c18f8 20 0 24 90 4 7c",
-        // speed1_norm
+        // speed1
         "9c18f8 20 0 10 10 20",
-        // speed
+        // vel2
+        "9c18f8 20 0 24 90 4 b0",
+        "9c18f8 20 0 24 90 4 b4",
+        "9c18f8 20 0 24 90 4 bc",
+        // vel
         "9c18f8 20 0 24 90 4 d4",
         "9c18f8 20 0 24 90 4 d8",
         "9c18f8 20 0 24 90 4 dc",
@@ -35,10 +43,14 @@ const char *const addresses[ADDRESS_COUNT] = {
         "9c18f8 20 0 24 90 4 a4",
         "9c18f8 20 0 24 90 4 a8",
         "9c18f8 20 0 24 90 4 ac",
+        // rot_vec1
+        "9c18f8 20 0 24 90 4 bc",
+        "9c18f8 20 0 24 90 4 c0",
+        "9c18f8 20 0 24 90 4 c4",
         // rot_vec2
-        "9c18f8 20 0 24 90 4 e4",
-        "9c18f8 20 0 24 90 4 e8",
-        "9c18f8 20 0 24 90 4 ec",
+        "4b0",
+        "4b4",
+        "4b8",
         // rot
         "9c18f8 20 0 24 90 4 f0",
         "9c18f8 20 0 24 90 4 f4",
@@ -95,7 +107,7 @@ int main(int argc, char **argv) {
         uint32_t fourcc = pack_u32('R', 'K', 'R', 'D');
         write_u32(fourcc, output);
 
-        uint32_t version = 0;
+        uint32_t version = 1;
         write_u32(version, output);
 
         while (1) {
