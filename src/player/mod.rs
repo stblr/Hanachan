@@ -92,7 +92,11 @@ impl Player {
             self.update_start_boost_charge(race);
         }
 
-        self.update_standstill_boost_rot();
+        if race.stage() == Stage::Race { // FIXME hack
+            self.physics.speed1 += 3.0;
+        }
+
+        self.update_standstill_boost_rot(race);
 
         let is_bike = self.stats.vehicle.kind.is_bike();
         if is_bike {
@@ -101,7 +105,7 @@ impl Player {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
         }
 
-        self.physics.update(is_bike, &self.wheels);
+        self.physics.update(is_bike, &self.wheels, race);
 
         for wheel in &mut self.wheels {
             wheel.update(&mut self.physics);
@@ -117,7 +121,15 @@ impl Player {
         self.start_boost_charge = self.start_boost_charge.clamp(0.0, 1.0);
     }
 
-    fn update_standstill_boost_rot(&mut self) {
-        self.standstill_boost_rot += 0.015 * -self.start_boost_charge - self.standstill_boost_rot;
+    fn update_standstill_boost_rot(&mut self, race: &Race) {
+        if race.stage() == Stage::Countdown {
+            let inc = 0.015 * -self.start_boost_charge - self.standstill_boost_rot;
+            self.standstill_boost_rot += inc;
+        } else {
+            let acceleration = (self.physics.speed1 - self.physics.last_speed1).clamp(-3.0, 3.0);
+            let factor = 1.0; // TODO handle bikes
+            let inc = factor * (-acceleration * 0.15 * 0.08 - self.standstill_boost_rot);
+            self.standstill_boost_rot += inc;
+        }
     }
 }

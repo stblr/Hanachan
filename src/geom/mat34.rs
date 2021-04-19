@@ -56,6 +56,11 @@ impl Mat34 {
         }
     }
 
+    pub fn from_axis_angle(axis: Vec3, angle: f32) -> Mat34 {
+        let q = Quat::from_axis_angle(axis, angle);
+        Mat34::from_quat_and_pos(q, Vec3::ZERO)
+    }
+
     pub fn from_diag(diag: Vec3) -> Mat34 {
         Mat34 {
             e00: diag.x,

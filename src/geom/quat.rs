@@ -35,6 +35,16 @@ impl Quat {
         }
     }
 
+    pub fn from_axis_angle(axis: Vec3, angle: f32) -> Quat {
+        let half = 0.5 * angle;
+        Quat {
+            x: half.wii_sin() * axis.x,
+            y: half.wii_sin() * axis.y,
+            z: half.wii_sin() * axis.z,
+            w: half.wii_cos(),
+        }
+    }
+
     pub fn invert(self) -> Quat {
         Quat {
             x: -self.x,

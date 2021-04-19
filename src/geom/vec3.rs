@@ -41,6 +41,15 @@ impl Vec3 {
         self - self.proj_unit(other)
     }
 
+    pub fn perp_in_plane(self, other: Vec3) -> Vec3 {
+        let colinear = self.dot(other).abs() == 1.0;
+        if colinear {
+            Vec3::ZERO
+        } else {
+            other.cross(self).cross(other).normalize()
+        }
+    }
+
     pub fn sq_norm(self) -> f32 {
         self.dot(self)
     }

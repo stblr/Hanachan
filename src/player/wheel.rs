@@ -79,8 +79,7 @@ impl Wheel {
 
         self.floor_nor = floor_movement.map(|_| Vec3::UP); // TODO compute from Kcl
         if let Some(floor_nor) = self.floor_nor {
-            let vel = self.pos - last_pos;
-            // TODO subtract vel1
+            let vel = self.pos - last_pos - physics.vel1;
             let dot = (vel + 10.0 * 1.3 * Vec3::DOWN).dot(floor_nor);
             if dot < 0.0 {
                 let cross = floor_nor.cross(-vel).cross(floor_nor);

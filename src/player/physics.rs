@@ -1,7 +1,8 @@
 use std::ops::Add;
 
-use crate::geom::{Mat34, Quat, Vec3};
+use crate::geom::{Mat33, Mat34, Quat, Vec3};
 use crate::player::Wheel;
+use crate::race::{Race, Stage};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Physics {
@@ -12,6 +13,9 @@ pub struct Physics {
     pub pos: Vec3,
     pub normal_acceleration: f32,
     pub vel0: Vec3,
+    pub vel1: Vec3,
+    pub last_speed1: f32,
+    pub speed1: f32,
     pub vel: Vec3,
     pub normal_rot_vec: Vec3,
     pub rot_vec0: Vec3,
@@ -47,6 +51,9 @@ impl Physics {
             pos,
             normal_acceleration: 0.0,
             vel0: Vec3::ZERO,
+            vel1: Vec3::ZERO,
+            last_speed1: 0.0,
+            speed1: 0.0,
             vel: Vec3::ZERO,
             normal_rot_vec: Vec3::ZERO,
             rot_vec0: Vec3::ZERO,
@@ -60,7 +67,7 @@ impl Physics {
         Mat34::from_quat_and_pos(self.rot1, self.pos)
     }
 
-    pub fn update(&mut self, is_bike: bool, wheels: &Vec<Wheel>) {
+    pub fn update(&mut self, is_bike: bool, wheels: &Vec<Wheel>, race: &Race) {
         self.floor_nor = wheels
             .iter()
             .filter_map(|wheel| wheel.floor_nor)
@@ -70,12 +77,19 @@ impl Physics {
 
         self.dir = Vec3::BACK.normalize(); // FIXME hack
 
-        // TODO handle later stages
-        if is_bike {
-            self.vel0 = self.vel0.rej_unit(self.floor_nor);
-        } else {
-            self.vel0.x = 0.0;
-            self.vel0.z = 0.0;
+        let vel1_dir = self.dir.perp_in_plane(self.floor_nor);
+        let right = self.floor_nor.cross(self.dir);
+        let angle = 0.5_f32.to_radians();
+        let vel1_dir = Mat33::from(Mat34::from_axis_angle(right, angle)) * vel1_dir;
+        self.vel1 = self.speed1 * vel1_dir;
+
+        if race.stage() != Stage::Race {
+            if is_bike {
+                self.vel0 = self.vel0.rej_unit(self.floor_nor);
+            } else {
+                self.vel0.x = 0.0;
+                self.vel0.z = 0.0;
+            }
         }
         self.vel0.y += self.normal_acceleration - 1.3;
         self.normal_acceleration = 0.0;
@@ -87,7 +101,7 @@ impl Physics {
             self.vel0 = self.vel0.rej_unit(front.normalize());
         }
 
-        self.vel = self.vel0;
+        self.vel = self.vel0 + self.vel1;
         self.vel = self.vel.norm() * self.vel.normalize();
         self.pos += self.vel;
 
