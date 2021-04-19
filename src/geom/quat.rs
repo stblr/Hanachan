@@ -73,11 +73,11 @@ impl Quat {
     }
 
     pub fn rotate(self, v: Vec3) -> Vec3 {
-        Vec3::from(self * Quat::from(v) * self.invert())
+        Vec3::from(self * v * self.invert())
     }
 
     pub fn inv_rotate(self, v: Vec3) -> Vec3 {
-        Vec3::from(self.invert() * Quat::from(v) * self)
+        Vec3::from(self.invert() * v * self)
     }
 
     pub fn slerp_to(self, other: Quat, t: f32) -> Quat {
@@ -128,6 +128,19 @@ impl Mul for Quat {
             y: self.w * other.y + self.y * other.w + self.z * other.x - self.x * other.z,
             z: self.w * other.z + self.z * other.w + self.x * other.y - self.y * other.x,
             w: self.w * other.w - self.x * other.x - self.y * other.y - self.z * other.z,
+        }
+    }
+}
+
+impl Mul<Vec3> for Quat {
+    type Output = Quat;
+
+    fn mul(self, v: Vec3) -> Quat {
+        Quat {
+            x: self.y * v.z - self.z * v.y + self.w * v.x,
+            y: self.z * v.x - self.x * v.z + self.w * v.y,
+            z: self.x * v.y - self.y * v.x + self.w * v.z,
+            w: -(self.x * v.x + self.y * v.y + self.z * v.z),
         }
     }
 }

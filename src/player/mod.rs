@@ -9,8 +9,9 @@ pub use params::{Character, Params, Vehicle};
 pub use stats::{CommonStats, Stats};
 
 use crate::fs::{Rkg, U8};
-use crate::geom::Vec3;
+use crate::geom::{Mat33, Vec3};
 use crate::race::{Race, Stage};
+use crate::wii::F32Ext;
 
 use physics::Physics;
 use wheel::Wheel;
@@ -19,8 +20,9 @@ use wheel::Wheel;
 pub struct Player {
     stats: Stats,
     rkg: Rkg,
+    turn: f32,
     start_boost_charge: f32,
-    standstill_boost_rot: f32,
+    standstill_boost_rot: f32, // TODO maybe rename
     physics: Physics,
     wheels: Vec<Wheel>,
 }
@@ -76,6 +78,7 @@ impl Player {
         Some(Player {
             stats,
             rkg,
+            turn: 0.0,
             start_boost_charge: 0.0,
             standstill_boost_rot: 0.0,
             physics,
@@ -92,18 +95,46 @@ impl Player {
             self.update_start_boost_charge(race);
         }
 
+        self.update_turn(race);
+
         if race.stage() == Stage::Race { // FIXME hack
+            self.physics.speed1 += self.physics.speed1_adj;
             self.physics.speed1 += 3.0;
         }
 
-        self.update_standstill_boost_rot(race);
+        self.physics.rot_vec2 = Vec3::ZERO;
 
+        self.update_standstill_boost_rot(race);
         let is_bike = self.stats.vehicle.kind.is_bike();
         if is_bike {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
         } else {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
+
+            let mat = self.physics.mat();
+            let front = Mat33::from(mat) * Vec3::FRONT;
+            let front = front.perp_in_plane(self.physics.floor_nor, true);
+            let rej = self.physics.vel.rej_unit(front);
+            let perp = rej.perp_in_plane(self.physics.floor_nor, false);
+            let sq_norm = perp.sq_norm();
+            let norm = if sq_norm > f32::EPSILON {
+                -sq_norm.wii_sqrt().min(1.0) * (perp.x * front.z - perp.z * front.x).signum()
+            } else {
+                0.0
+            };
+            self.physics.rot_vec0.z += self.stats.common.tilt_factor * norm * self.turn.abs();
         }
+
+        let tightness = self.stats.common.manual_handling_tightness; // TODO handle drift
+        let turn = self.turn * tightness;
+        let turn = if self.physics.speed1 < 20.0 {
+            0.4 * turn + (self.physics.speed1 / 20.0) * (turn * 0.6)
+        } else if self.physics.speed1 < 70.0 {
+            0.5 * turn + (1.0 - (self.physics.speed1 - 20.0) / (70.0 - 20.0)) * (turn * 0.5)
+        } else {
+            0.5 * turn
+        };
+        self.physics.rot_vec2.y += turn;
 
         self.physics.update(is_bike, &self.wheels, race);
 
@@ -119,6 +150,12 @@ impl Player {
             self.start_boost_charge *= 0.96;
         }
         self.start_boost_charge = self.start_boost_charge.clamp(0.0, 1.0);
+    }
+
+    fn update_turn(&mut self, race: &Race) {
+        let stick_x = self.rkg.stick_x(race.frame());
+        let reactivity = self.stats.common.handling_reactivity; // TODO handle drift
+        self.turn = reactivity * -stick_x + (1.0 - reactivity) * self.turn;
     }
 
     fn update_standstill_boost_rot(&mut self, race: &Race) {

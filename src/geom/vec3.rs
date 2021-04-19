@@ -12,6 +12,7 @@ pub struct Vec3 {
 
 impl Vec3 {
     pub const ZERO: Vec3 = Vec3::new(0.0, 0.0, 0.0);
+    pub const RIGHT: Vec3 = Vec3::new(1.0, 0.0, 0.0);
     pub const UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
     pub const DOWN: Vec3 = Vec3::new(0.0, -1.0, 0.0);
     pub const FRONT: Vec3 = Vec3::new(0.0, 0.0, 1.0);
@@ -41,12 +42,14 @@ impl Vec3 {
         self - self.proj_unit(other)
     }
 
-    pub fn perp_in_plane(self, other: Vec3) -> Vec3 {
+    pub fn perp_in_plane(self, other: Vec3, normalize: bool) -> Vec3 {
         let colinear = self.dot(other).abs() == 1.0;
         if colinear {
             Vec3::ZERO
-        } else {
+        } else if normalize {
             other.cross(self).cross(other).normalize()
+        } else {
+            other.cross(self).cross(other)
         }
     }
 

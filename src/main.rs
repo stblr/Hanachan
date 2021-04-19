@@ -96,7 +96,7 @@ fn main() {
         desync = check_val("SPEED1", race.frame(), physics.speed1, frame.speed1) || desync;
         desync = check_val("VEL", race.frame(), physics.vel, frame.vel) || desync;
         desync = check_val("ROT_VEC0", race.frame(), physics.rot_vec0, frame.rot_vec0) || desync;
-        desync = check_val("ROT_VEC2", race.frame(), physics.rot_vec2, frame.rot_vec2) || desync;
+        //desync = check_val("ROT_VEC2", race.frame(), physics.rot_vec2, frame.rot_vec2) || desync;
         desync = check_val("ROT0", race.frame(), physics.rot0, frame.rot0) || desync;
         desync = check_val("ROT1", race.frame(), physics.rot1, frame.rot1) || desync;
         if desync {

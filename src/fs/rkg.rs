@@ -16,14 +16,20 @@ impl Rkg {
     }
 
     pub fn accelerate(&self, frame: u32) -> bool {
-        match frame.checked_sub(172) {
-            Some(frame) => self
-                .frames
-                .get(frame as usize)
-                .filter(|frame| frame.accelerate)
-                .is_some(),
-            None => false,
-        }
+        frame
+            .checked_sub(172)
+            .and_then(|frame| self.frames.get(frame as usize))
+            .map(|frame| frame.accelerate)
+            .unwrap_or(false)
+    }
+
+    pub fn stick_x(&self, frame: u32) -> f32 {
+        let discrete_stick_x = frame
+            .checked_sub(172)
+            .and_then(|frame| self.frames.get(frame as usize))
+            .map(|frame| frame.stick_x)
+            .unwrap_or(7);
+        (discrete_stick_x as f32 - 7.0) / 7.0
     }
 }
 

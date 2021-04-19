@@ -10,12 +10,14 @@ pub struct Physics {
     pub rot_factor: f32,
     pub floor_nor: Vec3,
     pub dir: Vec3,
+    pub dir_diff: Vec3,
     pub pos: Vec3,
     pub normal_acceleration: f32,
     pub vel0: Vec3,
     pub vel1: Vec3,
     pub last_speed1: f32,
     pub speed1: f32,
+    pub speed1_adj: f32,
     pub vel: Vec3,
     pub normal_rot_vec: Vec3,
     pub rot_vec0: Vec3,
@@ -48,12 +50,14 @@ impl Physics {
             rot_factor,
             floor_nor: Vec3::UP,
             dir: Vec3::BACK,
+            dir_diff: Vec3::ZERO,
             pos,
             normal_acceleration: 0.0,
             vel0: Vec3::ZERO,
             vel1: Vec3::ZERO,
             last_speed1: 0.0,
             speed1: 0.0,
+            speed1_adj: 0.0,
             vel: Vec3::ZERO,
             normal_rot_vec: Vec3::ZERO,
             rot_vec0: Vec3::ZERO,
@@ -75,9 +79,9 @@ impl Physics {
             .map(|floor_nor| floor_nor.normalize())
             .unwrap_or(Vec3::UP);
 
-        self.dir = Vec3::BACK.normalize(); // FIXME hack
+        self.update_dir();
 
-        let vel1_dir = self.dir.perp_in_plane(self.floor_nor);
+        let vel1_dir = self.dir.perp_in_plane(self.floor_nor, true);
         let right = self.floor_nor.cross(self.dir);
         let angle = 0.5_f32.to_radians();
         let vel1_dir = Mat33::from(Mat34::from_axis_angle(right, angle)) * vel1_dir;
@@ -95,10 +99,13 @@ impl Physics {
         self.normal_acceleration = 0.0;
         self.vel0 = 0.998 * self.vel0;
 
-        let mut front = self.rot0.rotate(Vec3::FRONT);
-        front.y = 0.0;
-        if front.sq_norm() > f32::EPSILON {
-            self.vel0 = self.vel0.rej_unit(front.normalize());
+        let front = self.rot0.rotate(Vec3::FRONT);
+        let front_xz = Vec3::new(front.x, 0.0, front.z);
+        if front_xz.sq_norm() > f32::EPSILON {
+            let front_xz = front_xz.normalize();
+            let proj = self.vel0.proj_unit(front_xz);
+            self.vel0 = self.vel0.rej_unit(front_xz);
+            self.speed1_adj = front_xz.dot(proj).signum() * proj.norm() * front.dot(front_xz);
         }
 
         self.vel = self.vel0 + self.vel1;
@@ -106,8 +113,8 @@ impl Physics {
         self.pos += self.vel;
 
         self.rot_vec0 = 0.98 * self.rot_vec0;
-        let tmp0 = self.inv_inertia_tensor * self.normal_rot_vec;
-        let tmp1 = self.inv_inertia_tensor * (self.normal_rot_vec + tmp0);
+        let tmp0 = Mat33::from(self.inv_inertia_tensor) * self.normal_rot_vec;
+        let tmp1 = Mat33::from(self.inv_inertia_tensor) * (self.normal_rot_vec + tmp0);
         let normal_rot_vec = 0.5 * (tmp0 + tmp1);
         self.rot_vec0 += normal_rot_vec;
         self.normal_rot_vec = Vec3::ZERO;
@@ -132,6 +139,20 @@ impl Physics {
         };
 
         self.rot1 = self.rot0.normalize();
+    }
+
+    fn update_dir(&mut self) {
+        let right = self.rot0.rotate(Vec3::RIGHT);
+        let next_dir = right.cross(self.floor_nor).normalize().perp_in_plane(self.floor_nor, true);
+        let next_dir_diff = next_dir - self.dir;
+        if next_dir_diff.sq_norm() <= f32::EPSILON {
+            self.dir = next_dir;
+            self.dir_diff = Vec3::ZERO;
+        } else {
+            let next_dir_diff = self.dir_diff + 0.7 * next_dir_diff;
+            self.dir = (self.dir + next_dir_diff).normalize();
+            self.dir_diff = 0.1 * next_dir_diff;
+        }
     }
 
     fn stabilize(&mut self) {
