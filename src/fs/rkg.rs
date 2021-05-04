@@ -191,7 +191,7 @@ struct Frame {
     drift: bool,
     stick_x: u8,
     stick_y: u8,
-    trick: u8,
+    trick: Trick,
 }
 
 impl Frame {
@@ -210,9 +210,7 @@ impl Frame {
             return Err(Error {});
         }
 
-        if trick > 4 {
-            return Err(Error {});
-        }
+        let trick = Trick::try_from_raw(trick).ok_or(Error {})?;
 
         Ok(Frame {
             accelerate,
@@ -223,6 +221,26 @@ impl Frame {
             stick_y,
             trick,
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum Trick {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+impl Trick {
+    pub fn try_from_raw(trick: u8) -> Option<Trick> {
+        match trick {
+            0 => Some(Trick::Up),
+            1 => Some(Trick::Down),
+            2 => Some(Trick::Left),
+            3 => Some(Trick::Right),
+            _ => None,
+        }
     }
 }
 
