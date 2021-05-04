@@ -19,6 +19,7 @@ pub struct Physics {
     pub last_speed1: f32,
     pub speed1: f32,
     pub speed1_adj: f32,
+    pub speed1_soft_limit: f32,
     pub vel: Vec3,
     pub normal_rot_vec: Vec3,
     pub rot_vec0: Vec3,
@@ -60,6 +61,7 @@ impl Physics {
             last_speed1: 0.0,
             speed1: 0.0,
             speed1_adj: 0.0,
+            speed1_soft_limit: 0.0,
             vel: Vec3::ZERO,
             normal_rot_vec: Vec3::ZERO,
             rot_vec0: Vec3::ZERO,
@@ -83,12 +85,12 @@ impl Physics {
             self.speed1 += 3.0;
         }
 
-        let mut soft_speed1_limit = self.stats.common.base_speed;
+        let mut next_speed1_soft_limit = self.stats.common.base_speed;
         if is_boosting {
-            soft_speed1_limit *= 1.2;
+            next_speed1_soft_limit *= 1.2;
         }
-
-        self.speed1 = self.speed1.min(soft_speed1_limit);
+        self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_speed1_soft_limit);
+        self.speed1 = self.speed1.min(self.speed1_soft_limit);
     }
 
     pub fn update(&mut self, is_bike: bool, wheels: &Vec<Wheel>, race: &Race) {
