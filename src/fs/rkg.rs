@@ -23,6 +23,14 @@ impl Rkg {
             .unwrap_or(false)
     }
 
+    pub fn drift(&self, frame: u32) -> bool {
+        frame
+            .checked_sub(172)
+            .and_then(|frame| self.frames.get(frame as usize))
+            .map(|frame| frame.drift)
+            .unwrap_or(false)
+    }
+
     pub fn stick_x(&self, frame: u32) -> f32 {
         let discrete_stick_x = frame
             .checked_sub(172)

@@ -26,6 +26,7 @@ pub struct Physics {
     pub rot_vec2: Vec3,
     pub rot0: Quat,
     pub rot1: Quat,
+    pub stabilization_factor: f32,
 }
 
 impl Physics {
@@ -68,6 +69,7 @@ impl Physics {
             rot_vec2: Vec3::ZERO,
             rot0: Quat::BACK,
             rot1: Quat::BACK,
+            stabilization_factor: 0.0,
         }
     }
 
@@ -75,7 +77,48 @@ impl Physics {
         Mat34::from_quat_and_pos(self.rot1, self.pos)
     }
 
-    pub fn update_speed1(&mut self, is_boosting: bool, race: &Race) {
+    pub fn update_floor_nor(&mut self, is_hopping: bool, wheels: &Vec<Wheel>) {
+        if !is_hopping {
+            self.floor_nor = wheels
+                .iter()
+                .filter_map(|wheel| wheel.floor_nor)
+                .reduce(Add::add)
+                .map(|floor_nor| floor_nor.normalize())
+                .unwrap_or(Vec3::UP);
+        }
+
+        self.stabilization_factor = if is_hopping {
+            0.5 // TODO handle bikes
+        } else {
+            0.1
+        }
+    }
+
+    pub fn update_dir(&mut self, hop_dir: Option<Vec3>) {
+        let next_dir = hop_dir
+            .unwrap_or_else(|| {
+                let right = self.rot0.rotate(Vec3::RIGHT);
+                right.cross(self.floor_nor).normalize()
+            })
+            .perp_in_plane(self.floor_nor, true);
+        let next_dir_diff = next_dir - self.dir;
+        if next_dir_diff.sq_norm() <= f32::EPSILON {
+            self.dir = next_dir;
+            self.dir_diff = Vec3::ZERO;
+        } else {
+            let axis = self.dir.cross(next_dir);
+            let next_dir_diff = self.dir_diff + 0.7 * next_dir_diff;
+            self.dir = (self.dir + next_dir_diff).normalize();
+            self.dir_diff = 0.1 * next_dir_diff;
+            let next_axis = self.dir.cross(next_dir);
+            if axis.dot(next_axis) < 0.0 {
+                self.dir = next_dir;
+                self.dir_diff = Vec3::ZERO;
+            }
+        }
+    }
+
+    pub fn update_vel1(&mut self, is_boosting: bool, ground: bool, race: &Race) {
         if race.stage() == Stage::Race {
             self.speed1 += self.speed1_adj;
         }
@@ -91,24 +134,15 @@ impl Physics {
         }
         self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_speed1_soft_limit);
         self.speed1 = self.speed1.min(self.speed1_soft_limit);
-    }
-
-    pub fn update(&mut self, is_bike: bool, wheels: &Vec<Wheel>, race: &Race) {
-        self.floor_nor = wheels
-            .iter()
-            .filter_map(|wheel| wheel.floor_nor)
-            .reduce(Add::add)
-            .map(|floor_nor| floor_nor.normalize())
-            .unwrap_or(Vec3::UP);
-
-        self.update_dir();
 
         let vel1_dir = self.dir.perp_in_plane(self.floor_nor, true);
         let right = self.floor_nor.cross(self.dir);
-        let angle = 0.5_f32.to_radians();
+        let angle = if ground { 0.5_f32 } else { 0.2_f32 }.to_radians();
         let vel1_dir = Mat33::from(Mat34::from_axis_angle(right, angle)) * vel1_dir;
         self.vel1 = self.speed1 * vel1_dir;
+    }
 
+    pub fn update(&mut self, is_bike: bool, race: &Race) {
         if race.stage() != Stage::Race {
             if is_bike {
                 self.vel0 = self.vel0.rej_unit(self.floor_nor);
@@ -163,32 +197,12 @@ impl Physics {
         self.rot1 = self.rot0.normalize();
     }
 
-    fn update_dir(&mut self) {
-        let right = self.rot0.rotate(Vec3::RIGHT);
-        let next_dir = right.cross(self.floor_nor).normalize().perp_in_plane(self.floor_nor, true);
-        let next_dir_diff = next_dir - self.dir;
-        if next_dir_diff.sq_norm() <= f32::EPSILON {
-            self.dir = next_dir;
-            self.dir_diff = Vec3::ZERO;
-        } else {
-            let axis = self.dir.cross(next_dir);
-            let next_dir_diff = self.dir_diff + 0.7 * next_dir_diff;
-            self.dir = (self.dir + next_dir_diff).normalize();
-            self.dir_diff = 0.1 * next_dir_diff;
-            let next_axis = self.dir.cross(next_dir);
-            if axis.dot(next_axis) < 0.0 {
-                self.dir = next_dir;
-                self.dir_diff = Vec3::ZERO;
-            }
-        }
-    }
-
     fn stabilize(&mut self) {
         // TODO handle bikes
         let up = self.rot0.rotate(Vec3::UP);
         if self.floor_nor.dot(up).abs() < 0.9999 {
             let rot = Quat::from_vecs(up, self.floor_nor);
-            self.rot0 = self.rot0.slerp_to(rot * self.rot0, 0.1);
+            self.rot0 = self.rot0.slerp_to(rot * self.rot0, self.stabilization_factor);
         }
     }
 }

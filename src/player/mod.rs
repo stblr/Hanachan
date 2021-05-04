@@ -1,4 +1,5 @@
 mod handle;
+mod hop;
 mod params;
 mod physics;
 mod start_boost;
@@ -14,6 +15,7 @@ use crate::geom::{Mat33, Vec3};
 use crate::race::{Race, Stage};
 use crate::wii::F32Ext;
 
+use hop::Hop;
 use physics::Physics;
 use start_boost::StartBoost;
 use wheel::Wheel;
@@ -23,6 +25,7 @@ pub struct Player {
     stats: Stats,
     rkg: Rkg,
     start_boost: StartBoost,
+    hop: Hop,
     boost_frames: u16,
     turn: f32,
     standstill_boost_rot: f32, // TODO maybe rename
@@ -82,6 +85,7 @@ impl Player {
             stats,
             rkg,
             start_boost: StartBoost::new(),
+            hop: Hop::new(),
             boost_frames: 0,
             turn: 0.0,
             standstill_boost_rot: 0.0,
@@ -95,24 +99,32 @@ impl Player {
     }
 
     pub fn update(&mut self, race: &Race) {
+        let ground = self.wheels.iter().any(|wheel| wheel.floor_nor.is_some());
+
         if race.stage() == Stage::Countdown {
             self.start_boost.update(self.rkg.accelerate(race.frame()));
         } else if race.frame() == 411 {
             self.boost_frames = self.start_boost.boost_frames();
         }
 
+        self.physics.update_floor_nor(self.hop.is_hopping(), &self.wheels);
+
+        self.physics.update_dir(self.hop.dir);
+
         self.update_turn(race);
+
+        self.hop.update(self.rkg.drift(race.frame()), &mut self.physics);
 
         let is_boosting = self.boost_frames > 0;
         if is_boosting {
             self.boost_frames -= 1;
         }
 
-        self.physics.update_speed1(is_boosting, race);
+        self.physics.update_vel1(is_boosting, ground, race);
 
         self.physics.rot_vec2 = Vec3::ZERO;
 
-        self.update_standstill_boost_rot(race);
+        self.update_standstill_boost_rot(ground, race);
         let is_bike = self.stats.vehicle.kind.is_bike();
         if is_bike {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
@@ -144,7 +156,7 @@ impl Player {
         };
         self.physics.rot_vec2.y += turn;
 
-        self.physics.update(is_bike, &self.wheels, race);
+        self.physics.update(is_bike, race);
 
         for wheel in &mut self.wheels {
             wheel.update(&mut self.physics);
@@ -157,8 +169,10 @@ impl Player {
         self.turn = reactivity * -stick_x + (1.0 - reactivity) * self.turn;
     }
 
-    fn update_standstill_boost_rot(&mut self, race: &Race) {
-        if race.stage() == Stage::Countdown {
+    fn update_standstill_boost_rot(&mut self, ground: bool, race: &Race) {
+        if !ground {
+            self.standstill_boost_rot = 0.0;
+        } else if race.stage() == Stage::Countdown {
             let inc = 0.015 * -self.start_boost.charge - self.standstill_boost_rot;
             self.standstill_boost_rot += inc;
         } else {
