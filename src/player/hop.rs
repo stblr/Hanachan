@@ -3,23 +3,44 @@ use crate::player::Physics;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Hop {
-    pub dir: Option<Vec3>,
+    inner: Option<Inner>,
 }
 
 impl Hop {
     pub fn new() -> Hop {
-        Hop { dir: None }
+        Hop { inner: None }
     }
 
     pub fn is_hopping(&self) -> bool {
-        self.dir.is_some()
+        self.inner.is_some()
     }
 
-    pub fn update(&mut self, drift: bool, physics: &mut Physics) {
-        if !self.is_hopping() && drift {
+    pub fn dir(&self) -> Option<Vec3> {
+        self.inner.map(|inner| inner.dir)
+    }
+
+    pub fn stick_x(&self) -> Option<f32> {
+        self.inner.and_then(|inner| inner.stick_x)
+    }
+
+    pub fn update(&mut self, drift: bool, stick_x: f32, physics: &mut Physics) {
+        if let Some(ref mut inner) = self.inner {
+            if inner.stick_x.is_none() && stick_x != 0.0 {
+                inner.stick_x = Some(stick_x.signum() * stick_x.abs().ceil())
+            }
+        } else if drift {
             physics.vel0.y = 10.0;
             physics.normal_acceleration = 0.0;
-            self.dir = Some(physics.rot0.rotate(Vec3::FRONT));
+            self.inner = Some(Inner {
+                dir: physics.rot0.rotate(Vec3::FRONT),
+                stick_x: None,
+            });
         }
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Inner {
+    pub dir: Vec3,
+    pub stick_x: Option<f32>,
 }

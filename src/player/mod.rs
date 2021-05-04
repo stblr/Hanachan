@@ -29,6 +29,7 @@ pub struct Player {
     hop: Hop,
     boost_frames: u16,
     turn: f32,
+    diving_rot: f32,
     standstill_boost_rot: f32, // TODO maybe rename
     physics: Physics,
     wheels: Vec<Wheel>,
@@ -90,6 +91,7 @@ impl Player {
             hop: Hop::new(),
             boost_frames: 0,
             turn: 0.0,
+            diving_rot: 0.0,
             standstill_boost_rot: 0.0,
             physics,
             wheels,
@@ -116,11 +118,13 @@ impl Player {
 
         self.physics.update_floor_nor(self.hop.is_hopping(), &self.wheels);
 
-        self.physics.update_dir(self.hop.dir);
+        self.physics.update_dir(self.hop.dir());
 
         self.update_turn(race);
 
-        self.hop.update(self.rkg.drift(race.frame()), &mut self.physics);
+        let last_is_hopping = self.hop.is_hopping();
+        let frame_idx = race.frame();
+        self.hop.update(self.rkg.drift(frame_idx), self.rkg.stick_x(frame_idx), &mut self.physics);
 
         let is_boosting = self.boost_frames > 0;
         if is_boosting {
@@ -144,7 +148,7 @@ impl Player {
             let rej = self.physics.vel.rej_unit(front);
             let perp = rej.perp_in_plane(self.physics.floor_nor, false);
             let sq_norm = perp.sq_norm();
-            let norm = if sq_norm > f32::EPSILON {
+            let norm = if sq_norm > f32::EPSILON && ground {
                 -sq_norm.wii_sqrt().min(1.0) * (perp.x * front.z - perp.z * front.x).signum()
             } else {
                 0.0
@@ -153,8 +157,11 @@ impl Player {
         }
 
         let tightness = self.stats.common.manual_handling_tightness; // TODO handle drift
-        let turn = self.turn * tightness;
-        let turn = if self.physics.speed1 < 20.0 {
+        let mut turn = self.turn * tightness;
+        if self.hop.is_hopping() && last_is_hopping {
+            turn *= 1.4;
+        }
+        turn = if self.physics.speed1 < 20.0 {
             0.4 * turn + (self.physics.speed1 / 20.0) * (turn * 0.6)
         } else if self.physics.speed1 < 70.0 {
             0.5 * turn + (1.0 - (self.physics.speed1 - 20.0) / (70.0 - 20.0)) * (turn * 0.5)
@@ -162,6 +169,18 @@ impl Player {
             0.5 * turn
         };
         self.physics.rot_vec2.y += turn;
+
+        self.diving_rot *= 0.96;
+        if !ground {
+            let stick_y = self.rkg.stick_y(race.frame());
+            let diving_rot_diff = if self.airtime > 50 {
+                stick_y
+            } else {
+                self.airtime as f32 / 50.0 * stick_y
+            };
+            self.diving_rot += 0.005 * diving_rot_diff;
+            self.physics.rot_vec2.x += self.diving_rot;
+        }
 
         self.physics.update(is_bike, race);
 
@@ -171,7 +190,7 @@ impl Player {
     }
 
     fn update_turn(&mut self, race: &Race) {
-        let stick_x = self.rkg.stick_x(race.frame());
+        let stick_x = self.hop.stick_x().unwrap_or(self.rkg.stick_x(race.frame()));
         let reactivity = self.stats.common.handling_reactivity; // TODO handle drift
         self.turn = reactivity * -stick_x + (1.0 - reactivity) * self.turn;
     }

@@ -39,6 +39,15 @@ impl Rkg {
             .unwrap_or(7);
         (discrete_stick_x as f32 - 7.0) / 7.0
     }
+
+    pub fn stick_y(&self, frame: u32) -> f32 {
+        let discrete_stick_y = frame
+            .checked_sub(172)
+            .and_then(|frame| self.frames.get(frame as usize))
+            .map(|frame| frame.stick_y)
+            .unwrap_or(7);
+        (discrete_stick_y as f32 - 7.0) / 7.0
+    }
 }
 
 impl Parse for Rkg {
