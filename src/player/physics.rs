@@ -169,9 +169,15 @@ impl Physics {
             self.dir = next_dir;
             self.dir_diff = Vec3::ZERO;
         } else {
+            let axis = self.dir.cross(next_dir);
             let next_dir_diff = self.dir_diff + 0.7 * next_dir_diff;
             self.dir = (self.dir + next_dir_diff).normalize();
             self.dir_diff = 0.1 * next_dir_diff;
+            let next_axis = self.dir.cross(next_dir);
+            if axis.dot(next_axis) < 0.0 {
+                self.dir = next_dir;
+                self.dir_diff = Vec3::ZERO;
+            }
         }
     }
 
