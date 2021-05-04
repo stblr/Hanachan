@@ -71,6 +71,16 @@ impl Physics {
         Mat34::from_quat_and_pos(self.rot1, self.pos)
     }
 
+    pub fn update_speed1(&mut self, is_boosting: bool, race: &Race) {
+        if race.stage() == Stage::Race {
+            self.speed1 += self.speed1_adj;
+        }
+
+        if is_boosting {
+            self.speed1 += 3.0;
+        }
+    }
+
     pub fn update(&mut self, is_bike: bool, wheels: &Vec<Wheel>, race: &Race) {
         self.floor_nor = wheels
             .iter()

@@ -16,4 +16,16 @@ impl StartBoost {
         }
         self.charge = self.charge.clamp(0.0, 1.0);
     }
+
+    pub fn boost_frames(&self) -> u16 {
+        match self.charge {
+            c if c <= 0.85 => 0,
+            c if c <= 0.88 => 10,
+            c if c <= 0.905 => 20,
+            c if c <= 0.925 => 30,
+            c if c <= 0.94 => 45,
+            c if c <= 0.95 => 70,
+            _ => 0, // TODO handle burnout
+        }
+    }
 }

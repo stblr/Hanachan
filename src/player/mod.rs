@@ -23,6 +23,7 @@ pub struct Player {
     stats: Stats,
     rkg: Rkg,
     start_boost: StartBoost,
+    boost_frames: u16,
     turn: f32,
     standstill_boost_rot: f32, // TODO maybe rename
     physics: Physics,
@@ -81,6 +82,7 @@ impl Player {
             stats,
             rkg,
             start_boost: StartBoost::new(),
+            boost_frames: 0,
             turn: 0.0,
             standstill_boost_rot: 0.0,
             physics,
@@ -95,14 +97,18 @@ impl Player {
     pub fn update(&mut self, race: &Race) {
         if race.stage() == Stage::Countdown {
             self.start_boost.update(self.rkg.accelerate(race.frame()));
+        } else if race.frame() == 411 {
+            self.boost_frames = self.start_boost.boost_frames();
         }
 
         self.update_turn(race);
 
-        if race.stage() == Stage::Race { // FIXME hack
-            self.physics.speed1 += self.physics.speed1_adj;
-            self.physics.speed1 += 3.0;
+        let is_boosting = self.boost_frames > 0;
+        if is_boosting {
+            self.boost_frames -= 1;
         }
+
+        self.physics.update_speed1(is_boosting, race);
 
         self.physics.rot_vec2 = Vec3::ZERO;
 
