@@ -85,7 +85,7 @@ impl Parse for VehicleKind {
 #[derive(Clone, Copy, Debug)]
 pub struct CommonStats {
     weight: f32,
-    base_speed: f32,
+    pub base_speed: f32,
     handling_speed_multiplier: f32,
     pub tilt_factor: f32,
     acceleration_ys: [f32; 4],

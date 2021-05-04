@@ -1,11 +1,12 @@
 use std::ops::Add;
 
 use crate::geom::{Mat33, Mat34, Quat, Vec3};
-use crate::player::Wheel;
+use crate::player::{Stats, Wheel};
 use crate::race::{Race, Stage};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Physics {
+    pub stats: Stats,
     pub inv_inertia_tensor: Mat34,
     pub rot_factor: f32,
     pub floor_nor: Vec3,
@@ -27,7 +28,7 @@ pub struct Physics {
 }
 
 impl Physics {
-    pub fn new(cuboids: [Vec3; 2], rot_factor: f32, pos: Vec3) -> Physics {
+    pub fn new(stats: Stats, cuboids: [Vec3; 2], rot_factor: f32, pos: Vec3) -> Physics {
         let masses = [1.0 / 12.0, 1.0];
         let mut inertia_tensor = Vec3::ZERO;
         for i in 0..2 {
@@ -46,6 +47,7 @@ impl Physics {
         let inv_inertia_tensor = Mat34::from_diag(inv_inertia_tensor);
 
         Physics {
+            stats,
             inv_inertia_tensor,
             rot_factor,
             floor_nor: Vec3::UP,
@@ -76,9 +78,17 @@ impl Physics {
             self.speed1 += self.speed1_adj;
         }
 
+        self.last_speed1 = self.speed1;
         if is_boosting {
             self.speed1 += 3.0;
         }
+
+        let mut soft_speed1_limit = self.stats.common.base_speed;
+        if is_boosting {
+            soft_speed1_limit *= 1.2;
+        }
+
+        self.speed1 = self.speed1.min(soft_speed1_limit);
     }
 
     pub fn update(&mut self, is_bike: bool, wheels: &Vec<Wheel>, race: &Race) {

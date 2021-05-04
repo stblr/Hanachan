@@ -55,7 +55,7 @@ impl Player {
 
         let mut pos = Vec3::new(-14720.0, 1000.0, -2954.655); // TODO load from Kmp
         pos.y += bsp.initial_pos_y;
-        let physics = Physics::new(bsp.cuboids, bsp.rot_factor, pos);
+        let physics = Physics::new(stats, bsp.cuboids, bsp.rot_factor, pos);
 
         let bike_parts_disp_param = common_szs
             .get_node("./bikePartsDispParam.bin")?
