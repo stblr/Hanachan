@@ -1,6 +1,7 @@
 mod handle;
 mod params;
 mod physics;
+mod start_boost;
 mod stats;
 mod wheel;
 
@@ -14,14 +15,15 @@ use crate::race::{Race, Stage};
 use crate::wii::F32Ext;
 
 use physics::Physics;
+use start_boost::StartBoost;
 use wheel::Wheel;
 
 #[derive(Clone, Debug)]
 pub struct Player {
     stats: Stats,
     rkg: Rkg,
+    start_boost: StartBoost,
     turn: f32,
-    start_boost_charge: f32,
     standstill_boost_rot: f32, // TODO maybe rename
     physics: Physics,
     wheels: Vec<Wheel>,
@@ -78,8 +80,8 @@ impl Player {
         Some(Player {
             stats,
             rkg,
+            start_boost: StartBoost::new(),
             turn: 0.0,
-            start_boost_charge: 0.0,
             standstill_boost_rot: 0.0,
             physics,
             wheels,
@@ -92,7 +94,7 @@ impl Player {
 
     pub fn update(&mut self, race: &Race) {
         if race.stage() == Stage::Countdown {
-            self.update_start_boost_charge(race);
+            self.start_boost.update(self.rkg.accelerate(race.frame()));
         }
 
         self.update_turn(race);
@@ -143,15 +145,6 @@ impl Player {
         }
     }
 
-    fn update_start_boost_charge(&mut self, race: &Race) {
-        if self.rkg.accelerate(race.frame()) {
-            self.start_boost_charge += 0.02 - (0.02 - 0.002) * self.start_boost_charge;
-        } else {
-            self.start_boost_charge *= 0.96;
-        }
-        self.start_boost_charge = self.start_boost_charge.clamp(0.0, 1.0);
-    }
-
     fn update_turn(&mut self, race: &Race) {
         let stick_x = self.rkg.stick_x(race.frame());
         let reactivity = self.stats.common.handling_reactivity; // TODO handle drift
@@ -160,7 +153,7 @@ impl Player {
 
     fn update_standstill_boost_rot(&mut self, race: &Race) {
         if race.stage() == Stage::Countdown {
-            let inc = 0.015 * -self.start_boost_charge - self.standstill_boost_rot;
+            let inc = 0.015 * -self.start_boost.charge - self.standstill_boost_rot;
             self.standstill_boost_rot += inc;
         } else {
             let acceleration = (self.physics.speed1 - self.physics.last_speed1).clamp(-3.0, 3.0);
