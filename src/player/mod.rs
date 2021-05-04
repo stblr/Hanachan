@@ -24,6 +24,7 @@ use wheel::Wheel;
 pub struct Player {
     stats: Stats,
     rkg: Rkg,
+    airtime: u32,
     start_boost: StartBoost,
     hop: Hop,
     boost_frames: u16,
@@ -84,6 +85,7 @@ impl Player {
         Some(Player {
             stats,
             rkg,
+            airtime: 0,
             start_boost: StartBoost::new(),
             hop: Hop::new(),
             boost_frames: 0,
@@ -100,6 +102,11 @@ impl Player {
 
     pub fn update(&mut self, race: &Race) {
         let ground = self.wheels.iter().any(|wheel| wheel.floor_nor.is_some());
+        if ground {
+            self.airtime = 0;
+        } else {
+            self.airtime += 1;
+        }
 
         if race.stage() == Stage::Countdown {
             self.start_boost.update(self.rkg.accelerate(race.frame()));
@@ -120,7 +127,7 @@ impl Player {
             self.boost_frames -= 1;
         }
 
-        self.physics.update_vel1(is_boosting, ground, race);
+        self.physics.update_vel1(is_boosting, self.airtime, race);
 
         self.physics.rot_vec2 = Vec3::ZERO;
 

@@ -118,7 +118,7 @@ impl Physics {
         }
     }
 
-    pub fn update_vel1(&mut self, is_boosting: bool, ground: bool, race: &Race) {
+    pub fn update_vel1(&mut self, is_boosting: bool, airtime: u32, race: &Race) {
         if race.stage() == Stage::Race {
             self.speed1 += self.speed1_adj;
         }
@@ -126,6 +126,8 @@ impl Physics {
         self.last_speed1 = self.speed1;
         if is_boosting {
             self.speed1 += 3.0;
+        } else if airtime > 5 {
+            self.speed1 *= 0.999;
         }
 
         let mut next_speed1_soft_limit = self.stats.common.base_speed;
@@ -135,8 +137,13 @@ impl Physics {
         self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_speed1_soft_limit);
         self.speed1 = self.speed1.min(self.speed1_soft_limit);
 
-        let vel1_dir = self.dir.perp_in_plane(self.floor_nor, true);
+        let vel1_dir = if airtime > 5 {
+            self.dir
+        } else {
+            self.dir.perp_in_plane(self.floor_nor, true)
+        };
         let right = self.floor_nor.cross(self.dir);
+        let ground = airtime == 0;
         let angle = if ground { 0.5_f32 } else { 0.2_f32 }.to_radians();
         let vel1_dir = Mat33::from(Mat34::from_axis_angle(right, angle)) * vel1_dir;
         self.vel1 = self.speed1 * vel1_dir;
