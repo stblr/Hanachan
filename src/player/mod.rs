@@ -122,7 +122,7 @@ impl Player {
 
         self.update_turn(race);
 
-        let last_is_hopping = self.hop.is_hopping();
+        let last_is_hopping = self.hop.is_hopping(); // FIXME the game uses some f32 value instead
         let frame_idx = race.frame();
         self.hop.update(self.rkg.drift(frame_idx), self.rkg.stick_x(frame_idx), &mut self.physics);
 
