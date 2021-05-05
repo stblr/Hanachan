@@ -161,7 +161,9 @@ impl Player {
         if self.hop.is_hopping() && last_is_hopping {
             turn *= 1.4;
         }
-        turn = if self.physics.speed1 < 20.0 {
+        turn = if self.physics.speed1.abs() < 1.0 {
+            0.0
+        } else if self.physics.speed1 < 20.0 {
             0.4 * turn + (self.physics.speed1 / 20.0) * (turn * 0.6)
         } else if self.physics.speed1 < 70.0 {
             0.5 * turn + (1.0 - (self.physics.speed1 - 20.0) / (70.0 - 20.0)) * (turn * 0.5)
