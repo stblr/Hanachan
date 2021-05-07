@@ -86,7 +86,7 @@ impl Parse for VehicleKind {
 pub struct CommonStats {
     weight: f32,
     pub base_speed: f32,
-    handling_speed_multiplier: f32,
+    pub handling_speed_multiplier: f32,
     pub tilt_factor: f32,
     acceleration_ys: [f32; 4],
     acceleration_xs: [f32; 3],

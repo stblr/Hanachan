@@ -124,11 +124,17 @@ impl Physics {
         &mut self,
         is_boosting: bool,
         airtime: u32,
+        turn: f32,
         is_wheelieing: bool,
         race: &Race,
     ) {
         if race.stage() == Stage::Race {
             self.speed1 += self.speed1_adj;
+        }
+
+        if !is_boosting {
+            let t = self.stats.common.handling_speed_multiplier;
+            self.speed1 *= t + (1.0 - t) * (1.0 - turn.abs());
         }
 
         self.last_speed1 = self.speed1;

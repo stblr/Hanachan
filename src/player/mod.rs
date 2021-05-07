@@ -153,7 +153,7 @@ impl Player {
             .as_ref()
             .map(|bike| bike.wheelie.is_wheelieing())
             .unwrap_or(false);
-        self.physics.update_vel1(is_boosting, self.airtime, is_wheelieing, race);
+        self.physics.update_vel1(is_boosting, self.airtime, self.turn, is_wheelieing, race);
 
         let is_bike = self.stats.vehicle.kind.is_bike();
         self.update_standstill_boost_rot(is_bike, ground, race);
