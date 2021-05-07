@@ -104,8 +104,8 @@ impl Player {
         })
     }
 
-    pub fn physics(&self) -> Physics {
-        self.physics
+    pub fn physics(&self) -> &Physics {
+        &self.physics
     }
 
     pub fn update(&mut self, race: &Race) {
@@ -142,7 +142,7 @@ impl Player {
         self.physics.rot_vec2 = Vec3::ZERO;
 
         self.update_standstill_boost_rot(ground, race);
-        if let Some(ref mut lean) = self.lean {
+        if let Some(lean) = &mut self.lean {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
 
             let stick_x = self.rkg.stick_x(race.frame());

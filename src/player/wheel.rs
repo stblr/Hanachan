@@ -3,7 +3,7 @@ use crate::geom::{Hitbox, Mat33, Mat34, Vec3};
 use crate::player::{Handle, Lean, Physics};
 use crate::wii::F32Ext;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Wheel {
     handle: Option<Handle>,
     bsp_wheel: BspWheel,

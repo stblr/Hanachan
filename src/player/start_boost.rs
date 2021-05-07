@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct StartBoost {
     pub charge: f32,
 }

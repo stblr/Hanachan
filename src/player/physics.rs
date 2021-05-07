@@ -4,7 +4,7 @@ use crate::geom::{Mat33, Mat34, Quat, Vec3};
 use crate::player::{Stats, Wheel};
 use crate::race::{Race, Stage};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Physics {
     pub stats: Stats,
     pub inv_inertia_tensor: Mat34,

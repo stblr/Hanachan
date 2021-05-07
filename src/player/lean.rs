@@ -1,7 +1,7 @@
 use crate::geom::{Mat33, Vec3};
 use crate::player::Physics;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Lean {
     rot: f32,
     rot_diff: f32,

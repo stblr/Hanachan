@@ -1,7 +1,7 @@
 use crate::geom::Vec3;
 use crate::player::Physics;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Hop {
     inner: Option<Inner>,
 }
@@ -16,15 +16,15 @@ impl Hop {
     }
 
     pub fn dir(&self) -> Option<Vec3> {
-        self.inner.map(|inner| inner.dir)
+        self.inner.as_ref().map(|inner| inner.dir)
     }
 
     pub fn stick_x(&self) -> Option<f32> {
-        self.inner.and_then(|inner| inner.stick_x)
+        self.inner.as_ref().and_then(|inner| inner.stick_x)
     }
 
     pub fn update(&mut self, drift: bool, stick_x: f32, physics: &mut Physics) {
-        if let Some(ref mut inner) = self.inner {
+        if let Some(inner) = &mut self.inner {
             if inner.stick_x.is_none() && stick_x != 0.0 {
                 inner.stick_x = Some(stick_x.signum() * stick_x.abs().ceil())
             }
@@ -39,7 +39,7 @@ impl Hop {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct Inner {
     pub dir: Vec3,
     pub stick_x: Option<f32>,
