@@ -152,7 +152,8 @@ impl Player {
 
         self.physics.update_vel1(is_boosting, self.airtime, race);
 
-        self.update_standstill_boost_rot(ground, race);
+        let is_bike = self.stats.vehicle.kind.is_bike();
+        self.update_standstill_boost_rot(is_bike, ground, race);
         if let Some(lean) = &mut self.lean {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
 
@@ -207,7 +208,6 @@ impl Player {
             self.physics.rot_vec2.x += self.diving_rot;
         }
 
-        let is_bike = self.stats.vehicle.kind.is_bike();
         self.physics.update(is_bike, race);
 
         for wheel in &mut self.wheels {
@@ -223,7 +223,7 @@ impl Player {
         self.turn = reactivity * -stick_x + (1.0 - reactivity) * self.turn;
     }
 
-    fn update_standstill_boost_rot(&mut self, ground: bool, race: &Race) {
+    fn update_standstill_boost_rot(&mut self, is_bike: bool, ground: bool, race: &Race) {
         if !ground {
             self.standstill_boost_rot = 0.0;
         } else if race.stage() == Stage::Countdown {
@@ -231,7 +231,11 @@ impl Player {
             self.standstill_boost_rot += inc;
         } else {
             let acceleration = (self.physics.speed1 - self.physics.last_speed1).clamp(-3.0, 3.0);
-            let factor = 1.0; // TODO handle bikes
+            let factor = if is_bike {
+                0.2
+            } else {
+                1.0
+            };
             let inc = factor * (-acceleration * 0.15 * 0.08 - self.standstill_boost_rot);
             self.standstill_boost_rot += inc;
         }
