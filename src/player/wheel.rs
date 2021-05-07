@@ -1,6 +1,6 @@
 use crate::fs::BspWheel;
 use crate::geom::{Hitbox, Mat33, Mat34, Vec3};
-use crate::player::{Handle, Lean, Physics, Wheelie};
+use crate::player::{Bike, Handle, Physics};
 use crate::wii::F32Ext;
 
 #[derive(Clone, Debug)]
@@ -35,7 +35,7 @@ impl Wheel {
         }
     }
 
-    pub fn update(&mut self, lean: Option<&Lean>, wheelie: Option<&Wheelie>, physics: &mut Physics) {
+    pub fn update(&mut self, bike: Option<&Bike>, physics: &mut Physics) {
         let bsp_wheel = self.bsp_wheel;
 
         self.axis_s = (self.axis_s + 5.0).min(bsp_wheel.slack_y);
@@ -46,9 +46,9 @@ impl Wheel {
 
         let radius_diff = bsp_wheel.wheel_radius - bsp_wheel.hitbox_radius;
         let mut hitbox_pos = self.pos + radius_diff * axis;
-        if let Some(lean) = lean {
+        if let Some(bike) = bike {
             let right = Mat33::from(physics.mat()) * Vec3::RIGHT;
-            hitbox_pos += lean.rot() * bsp_wheel.hitbox_radius * 0.3 * right;
+            hitbox_pos += bike.lean.rot() * bsp_wheel.hitbox_radius * 0.3 * right;
         }
         let hitbox = Hitbox::new(hitbox_pos, self.hitbox_radius);
         let floor_movement = hitbox.check_collision();
@@ -74,7 +74,7 @@ impl Wheel {
             let topmost_pos_rel = physics.rot1.inv_rotate(topmost_pos - physics.pos);
             let acceleration = physics.rot1.inv_rotate(acceleration);
             let mut cross = topmost_pos_rel.cross(acceleration);
-            if wheelie.map(|wheelie| wheelie.rot() > 0.0).unwrap_or(false) {
+            if bike.map(|bike| bike.wheelie.rot() > 0.0).unwrap_or(false) {
                 cross.x = 0.0;
             }
             cross.y = 0.0;
@@ -110,7 +110,7 @@ impl Wheel {
                     let sum = proj + rej;
                     let rej = sum.rej_unit(physics.dir);
                     physics.vel0 += rej;
-                    if wheelie.map(|wheelie| wheelie.rot() <= 0.0).unwrap_or(true) {
+                    if bike.map(|bike| bike.wheelie.rot() <= 0.0).unwrap_or(true) {
                         let mut cross = physics.rot0.inv_rotate(mat * hitbox_pos_rel.cross(sum));
                         cross.y = 0.0;
                         physics.rot_vec0 += cross;

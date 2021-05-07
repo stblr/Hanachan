@@ -1,3 +1,4 @@
+mod bike;
 mod handle;
 mod hop;
 mod lean;
@@ -17,6 +18,7 @@ use crate::geom::{Mat33, Vec3};
 use crate::race::{Race, Stage};
 use crate::wii::F32Ext;
 
+use bike::Bike;
 use hop::Hop;
 use lean::Lean;
 use physics::Physics;
@@ -35,8 +37,7 @@ pub struct Player {
     turn: f32,
     diving_rot: f32,
     standstill_boost_rot: f32, // TODO maybe rename
-    lean: Option<Lean>,
-    wheelie: Option<Wheelie>,
+    bike: Option<Bike>,
     physics: Physics,
     wheels: Vec<Wheel>,
 }
@@ -61,9 +62,7 @@ impl Player {
 
         let stats = vehicle_stats.merge_with(*character_stats);
 
-        let lean = stats.vehicle.kind.is_bike().then(|| Lean::new());
-
-        let wheelie = stats.vehicle.kind.is_bike().then(|| Wheelie::new());
+        let bike = stats.vehicle.kind.is_bike().then(|| Bike::new());
 
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
         let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
@@ -103,8 +102,7 @@ impl Player {
             turn: 0.0,
             diving_rot: 0.0,
             standstill_boost_rot: 0.0,
-            lean,
-            wheelie,
+            bike,
             physics,
             wheels,
         })
@@ -141,8 +139,8 @@ impl Player {
         self.hop.update(self.rkg.drift(frame_idx), self.rkg.stick_x(frame_idx), &mut self.physics);
 
         let trick_is_up = self.rkg.trick(frame_idx) == Some(RkgTrick::Up);
-        if let Some(wheelie) = &mut self.wheelie {
-            wheelie.update(self.stats.common.base_speed, trick_is_up, &mut self.physics);
+        if let Some(bike) = &mut self.bike {
+            bike.wheelie.update(self.stats.common.base_speed, trick_is_up, &mut self.physics);
         }
 
         let is_boosting = self.boost_frames > 0;
@@ -154,12 +152,11 @@ impl Player {
 
         let is_bike = self.stats.vehicle.kind.is_bike();
         self.update_standstill_boost_rot(is_bike, ground, race);
-        if let Some(lean) = &mut self.lean {
+        if let Some(bike) = &mut self.bike {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
 
             let stick_x = self.rkg.stick_x(race.frame());
-            let wheelie = self.wheelie.as_ref().unwrap();
-            lean.update(stick_x, wheelie.is_wheelieing(), &mut self.physics);
+            bike.lean.update(stick_x, bike.wheelie.is_wheelieing(), &mut self.physics);
         } else {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
 
@@ -191,7 +188,7 @@ impl Player {
         } else {
             0.5 * turn
         };
-        if self.wheelie.as_ref().map(|wheelie| wheelie.is_wheelieing()).unwrap_or(false) {
+        if self.bike.as_ref().map(|bike| bike.wheelie.is_wheelieing()).unwrap_or(false) {
             turn *= 0.2;
         }
         self.physics.rot_vec2.y += turn;
@@ -211,7 +208,7 @@ impl Player {
         self.physics.update(is_bike, race);
 
         for wheel in &mut self.wheels {
-            wheel.update(self.lean.as_ref(), self.wheelie.as_ref(), &mut self.physics);
+            wheel.update(self.bike.as_ref(), &mut self.physics);
         }
 
         self.physics.update_mat();
