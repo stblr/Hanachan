@@ -1,5 +1,6 @@
 mod handle;
 mod hop;
+mod lean;
 mod params;
 mod physics;
 mod start_boost;
@@ -16,6 +17,7 @@ use crate::race::{Race, Stage};
 use crate::wii::F32Ext;
 
 use hop::Hop;
+use lean::Lean;
 use physics::Physics;
 use start_boost::StartBoost;
 use wheel::Wheel;
@@ -31,6 +33,7 @@ pub struct Player {
     turn: f32,
     diving_rot: f32,
     standstill_boost_rot: f32, // TODO maybe rename
+    lean: Option<Lean>,
     physics: Physics,
     wheels: Vec<Wheel>,
 }
@@ -54,6 +57,8 @@ impl Player {
         let character_stats = driver_param.character(*params.character());
 
         let stats = vehicle_stats.merge_with(*character_stats);
+
+        let lean = stats.vehicle.kind.is_bike().then(|| Lean::new());
 
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
         let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
@@ -93,6 +98,7 @@ impl Player {
             turn: 0.0,
             diving_rot: 0.0,
             standstill_boost_rot: 0.0,
+            lean,
             physics,
             wheels,
         })
@@ -136,9 +142,11 @@ impl Player {
         self.physics.rot_vec2 = Vec3::ZERO;
 
         self.update_standstill_boost_rot(ground, race);
-        let is_bike = self.stats.vehicle.kind.is_bike();
-        if is_bike {
+        if let Some(ref mut lean) = self.lean {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
+
+            let stick_x = self.rkg.stick_x(race.frame());
+            lean.update(stick_x, &mut self.physics);
         } else {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
 
@@ -184,11 +192,14 @@ impl Player {
             self.physics.rot_vec2.x += self.diving_rot;
         }
 
+        let is_bike = self.stats.vehicle.kind.is_bike();
         self.physics.update(is_bike, race);
 
         for wheel in &mut self.wheels {
-            wheel.update(&mut self.physics);
+            wheel.update(self.lean.as_ref(), &mut self.physics);
         }
+
+        self.physics.update_mat();
     }
 
     fn update_turn(&mut self, race: &Race) {

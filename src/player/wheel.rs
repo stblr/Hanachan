@@ -1,6 +1,6 @@
 use crate::fs::BspWheel;
 use crate::geom::{Hitbox, Mat33, Mat34, Vec3};
-use crate::player::{Handle, Physics};
+use crate::player::{Handle, Lean, Physics};
 use crate::wii::F32Ext;
 
 #[derive(Clone, Copy, Debug)]
@@ -35,7 +35,7 @@ impl Wheel {
         }
     }
 
-    pub fn update(&mut self, physics: &mut Physics) {
+    pub fn update(&mut self, lean: Option<&Lean>, physics: &mut Physics) {
         let bsp_wheel = self.bsp_wheel;
 
         self.axis_s = (self.axis_s + 5.0).min(bsp_wheel.slack_y);
@@ -45,8 +45,11 @@ impl Wheel {
         self.pos = topmost_pos + self.axis_s * axis;
 
         let radius_diff = bsp_wheel.wheel_radius - bsp_wheel.hitbox_radius;
-        let hitbox_pos = self.pos + radius_diff * axis;
-        // TODO add turn_rot_z thing for bikes
+        let mut hitbox_pos = self.pos + radius_diff * axis;
+        if let Some(lean) = lean {
+            let right = Mat33::from(physics.mat()) * Vec3::RIGHT;
+            hitbox_pos += lean.rot() * bsp_wheel.hitbox_radius * 0.3 * right;
+        }
         let hitbox = Hitbox::new(hitbox_pos, self.hitbox_radius);
         let floor_movement = hitbox.check_collision();
         if let Some(floor_movement) = floor_movement {
@@ -115,12 +118,13 @@ impl Wheel {
     }
 
     fn mat(&self, physics: &Physics) -> Mat34 {
+        let player_mat = Mat34::from_quat_and_pos(physics.rot1, physics.pos);
         match self.handle {
             Some(handle) => {
                 let handle_mat = Mat34::from_angles_and_pos(handle.angles(), handle.pos());
-                physics.mat() * handle_mat
+                player_mat * handle_mat
             }
-            None => physics.mat(),
+            None => player_mat,
         }
     }
 }

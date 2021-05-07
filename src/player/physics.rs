@@ -9,6 +9,7 @@ pub struct Physics {
     pub stats: Stats,
     pub inv_inertia_tensor: Mat34,
     pub rot_factor: f32,
+    pub mat: Mat34,
     pub floor_nor: Vec3,
     pub dir: Vec3,
     pub dir_diff: Vec3,
@@ -52,6 +53,7 @@ impl Physics {
             stats,
             inv_inertia_tensor,
             rot_factor,
+            mat: Mat34::from_quat_and_pos(Quat::BACK, pos),
             floor_nor: Vec3::UP,
             dir: Vec3::BACK,
             dir_diff: Vec3::ZERO,
@@ -74,7 +76,7 @@ impl Physics {
     }
 
     pub fn mat(&self) -> Mat34 {
-        Mat34::from_quat_and_pos(self.rot1, self.pos)
+        self.mat
     }
 
     pub fn update_floor_nor(&mut self, is_hopping: bool, wheels: &Vec<Wheel>) {
@@ -212,4 +214,9 @@ impl Physics {
             self.rot0 = self.rot0.slerp_to(rot * self.rot0, self.stabilization_factor);
         }
     }
+
+    pub fn update_mat(&mut self) {
+        self.mat = Mat34::from_quat_and_pos(self.rot1, self.pos);
+    }
+
 }
