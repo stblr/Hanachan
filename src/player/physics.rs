@@ -120,7 +120,13 @@ impl Physics {
         }
     }
 
-    pub fn update_vel1(&mut self, is_boosting: bool, airtime: u32, race: &Race) {
+    pub fn update_vel1(
+        &mut self,
+        is_boosting: bool,
+        airtime: u32,
+        is_wheelieing: bool,
+        race: &Race,
+    ) {
         if race.stage() == Stage::Race {
             self.speed1 += self.speed1_adj;
         }
@@ -132,10 +138,10 @@ impl Physics {
             self.speed1 *= 0.999;
         }
 
-        let mut next_speed1_soft_limit = self.stats.common.base_speed;
-        if is_boosting {
-            next_speed1_soft_limit *= 1.2;
-        }
+        let base_speed = self.stats.common.base_speed;
+        let boost_factor = if is_boosting { 1.2 } else { 1.0 };
+        let wheelie_bonus = if is_wheelieing { 0.15 } else { 0.0 };
+        let next_speed1_soft_limit = base_speed * (boost_factor + wheelie_bonus);
         self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_speed1_soft_limit);
         self.speed1 = self.speed1.min(self.speed1_soft_limit);
 
