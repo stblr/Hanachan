@@ -48,6 +48,13 @@ impl Rkg {
             .unwrap_or(7);
         (discrete_stick_y as f32 - 7.0) / 7.0
     }
+
+    pub fn trick(&self, frame: u32) -> Option<Trick> {
+        frame
+            .checked_sub(172)
+            .and_then(|frame| self.frames.get(frame as usize))
+            .and_then(|frame| frame.trick)
+    }
 }
 
 impl Parse for Rkg {
@@ -224,8 +231,8 @@ impl Frame {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-enum Trick {
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Trick {
     Up,
     Down,
     Left,

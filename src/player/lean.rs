@@ -19,8 +19,8 @@ impl Lean {
         self.rot
     }
 
-    pub fn update(&mut self, stick_x: f32, physics: &mut Physics) {
-        let s = if stick_x.abs() <= 0.2 {
+    pub fn update(&mut self, stick_x: f32, is_wheelieing: bool, physics: &mut Physics) {
+        let s = if stick_x.abs() <= 0.2 || is_wheelieing {
             self.rot *= 0.9;
             0.0
         } else {

@@ -196,7 +196,7 @@ impl Physics {
                 Quat::IDENTITY
             };
         }
-        self.stabilize();
+        self.stabilize(is_bike);
         self.rot0 = if self.rot0.sq_norm() >= f32::EPSILON {
             self.rot0.normalize()
         } else {
@@ -206,11 +206,19 @@ impl Physics {
         self.rot1 = self.rot0.normalize();
     }
 
-    fn stabilize(&mut self) {
-        // TODO handle bikes
+    fn stabilize(&mut self, is_bike: bool) {
+        let floor_nor = if is_bike {
+            let front = self.rot0.rotate(Vec3::FRONT);
+            let right = self.floor_nor.cross(front);
+            let front = right.cross(self.floor_nor).normalize();
+            let right = self.floor_nor.cross(front);
+            front.cross(right).normalize()
+        } else {
+            self.floor_nor
+        };
         let up = self.rot0.rotate(Vec3::UP);
-        if self.floor_nor.dot(up).abs() < 0.9999 {
-            let rot = Quat::from_vecs(up, self.floor_nor);
+        if floor_nor.dot(up).abs() < 0.9999 {
+            let rot = Quat::from_vecs(up, floor_nor);
             self.rot0 = self.rot0.slerp_to(rot * self.rot0, self.stabilization_factor);
         }
     }

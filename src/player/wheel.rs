@@ -1,6 +1,6 @@
 use crate::fs::BspWheel;
 use crate::geom::{Hitbox, Mat33, Mat34, Vec3};
-use crate::player::{Handle, Lean, Physics};
+use crate::player::{Handle, Lean, Physics, Wheelie};
 use crate::wii::F32Ext;
 
 #[derive(Clone, Debug)]
@@ -35,7 +35,7 @@ impl Wheel {
         }
     }
 
-    pub fn update(&mut self, lean: Option<&Lean>, physics: &mut Physics) {
+    pub fn update(&mut self, lean: Option<&Lean>, wheelie: Option<&Wheelie>, physics: &mut Physics) {
         let bsp_wheel = self.bsp_wheel;
 
         self.axis_s = (self.axis_s + 5.0).min(bsp_wheel.slack_y);
@@ -74,8 +74,10 @@ impl Wheel {
             let topmost_pos_rel = physics.rot1.inv_rotate(topmost_pos - physics.pos);
             let acceleration = physics.rot1.inv_rotate(acceleration);
             let mut cross = topmost_pos_rel.cross(acceleration);
+            if wheelie.map(|wheelie| wheelie.rot() > 0.0).unwrap_or(false) {
+                cross.x = 0.0;
+            }
             cross.y = 0.0;
-            // TODO add wheelie checks
             physics.normal_rot_vec += cross;
         }
         self.last_pos_rel = pos_rel;
@@ -108,10 +110,11 @@ impl Wheel {
                     let sum = proj + rej;
                     let rej = sum.rej_unit(physics.dir);
                     physics.vel0 += rej;
-                    // TODO add wheelie check
-                    let mut cross = physics.rot0.inv_rotate(mat * hitbox_pos_rel.cross(sum));
-                    cross.y = 0.0;
-                    physics.rot_vec0 += cross;
+                    if wheelie.map(|wheelie| wheelie.rot() <= 0.0).unwrap_or(true) {
+                        let mut cross = physics.rot0.inv_rotate(mat * hitbox_pos_rel.cross(sum));
+                        cross.y = 0.0;
+                        physics.rot_vec0 += cross;
+                    }
                 }
             }
         }
