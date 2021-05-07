@@ -191,7 +191,7 @@ struct Frame {
     drift: bool,
     stick_x: u8,
     stick_y: u8,
-    trick: Trick,
+    trick: Option<Trick>,
 }
 
 impl Frame {
@@ -210,7 +210,7 @@ impl Frame {
             return Err(Error {});
         }
 
-        let trick = Trick::try_from_raw(trick).ok_or(Error {})?;
+        let trick = Trick::from_raw(trick);
 
         Ok(Frame {
             accelerate,
@@ -233,12 +233,12 @@ enum Trick {
 }
 
 impl Trick {
-    pub fn try_from_raw(trick: u8) -> Option<Trick> {
+    pub fn from_raw(trick: u8) -> Option<Trick> {
         match trick {
-            0 => Some(Trick::Up),
-            1 => Some(Trick::Down),
-            2 => Some(Trick::Left),
-            3 => Some(Trick::Right),
+            1 => Some(Trick::Up),
+            2 => Some(Trick::Down),
+            3 => Some(Trick::Left),
+            4 => Some(Trick::Right),
             _ => None,
         }
     }
