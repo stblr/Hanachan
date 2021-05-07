@@ -88,10 +88,10 @@ pub struct CommonStats {
     pub base_speed: f32,
     pub handling_speed_multiplier: f32,
     pub tilt_factor: f32,
-    acceleration_ys: [f32; 4],
-    acceleration_xs: [f32; 3],
+    pub acceleration_ys: [f32; 4],
+    pub acceleration_xs: [f32; 4],
     drift_acceleration_ys: [f32; 2],
-    drift_acceleration_xs: [f32; 1],
+    drift_acceleration_xs: [f32; 2],
     pub manual_handling_tightness: f32,
     automatic_handling_tightness: f32,
     pub handling_reactivity: f32,
@@ -109,9 +109,9 @@ impl Parse for CommonStats {
         let handling_speed_multiplier = input.take()?;
         let tilt_factor = input.take()?;
         let acceleration_ys = [input.take()?, input.take()?, input.take()?, input.take()?];
-        let acceleration_xs = [input.take()?, input.take()?, input.take()?];
+        let acceleration_xs = [0.0, input.take()?, input.take()?, input.take()?];
         let drift_acceleration_ys = [input.take()?, input.take()?];
-        let drift_acceleration_xs = [input.take()?];
+        let drift_acceleration_xs = [0.0, input.take()?];
         let manual_handling_tightness = input.take()?;
         let automatic_handling_tightness = input.take()?;
         let handling_reactivity = input.take()?;

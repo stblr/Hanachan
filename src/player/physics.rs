@@ -132,7 +132,8 @@ impl Physics {
             self.speed1 += self.speed1_adj;
         }
 
-        if !is_boosting {
+        let ground = airtime == 0;
+        if !is_boosting && ground {
             let t = self.stats.common.handling_speed_multiplier;
             self.speed1 *= t + (1.0 - t) * (1.0 - turn.abs());
         }
@@ -142,6 +143,8 @@ impl Physics {
             self.speed1 += 3.0;
         } else if airtime > 5 {
             self.speed1 *= 0.999;
+        } else if race.stage() == Stage::Race {
+            self.speed1 += self.compute_acceleration();
         }
 
         let base_speed = self.stats.common.base_speed;
@@ -157,10 +160,25 @@ impl Physics {
             self.dir.perp_in_plane(self.floor_nor, true)
         };
         let right = self.floor_nor.cross(self.dir);
-        let ground = airtime == 0;
         let angle = if ground { 0.5_f32 } else { 0.2_f32 }.to_radians();
         let vel1_dir = Mat33::from(Mat34::from_axis_angle(right, angle)) * vel1_dir;
         self.vel1 = self.speed1 * vel1_dir;
+    }
+
+    fn compute_acceleration(&self) -> f32 {
+        let t = self.speed1 / self.speed1_soft_limit;
+        if t < 0.0 {
+            1.0
+        } else {
+            let ys = self.stats.common.acceleration_ys;
+            let xs = self.stats.common.acceleration_xs;
+            match xs.iter().skip(1).position(|x| t < *x) {
+                Some(i) => {
+                    ys[i] + (ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]) * (t - xs[i])
+                },
+                None => ys[3],
+            }
+        }
     }
 
     pub fn update(&mut self, is_bike: bool, race: &Race) {
