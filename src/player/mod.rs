@@ -136,7 +136,10 @@ impl Player {
 
         let last_is_hopping = self.hop.is_hopping(); // FIXME the game uses some f32 value instead
         let frame_idx = race.frame();
-        self.hop.update(self.rkg.drift(frame_idx), self.rkg.stick_x(frame_idx), &mut self.physics);
+        let drift = self.rkg.drift(frame_idx);
+        let stick_x = self.rkg.stick_x(frame_idx);
+        let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
+        self.hop.update(drift, stick_x, wheelie, &mut self.physics);
 
         let trick_is_up = self.rkg.trick(frame_idx) == Some(RkgTrick::Up);
         if let Some(bike) = &mut self.bike {

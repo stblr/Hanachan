@@ -1,5 +1,5 @@
 use crate::geom::Vec3;
-use crate::player::Physics;
+use crate::player::{Physics, Wheelie};
 
 #[derive(Clone, Debug)]
 pub struct Hop {
@@ -23,14 +23,25 @@ impl Hop {
         self.inner.as_ref().and_then(|inner| inner.stick_x)
     }
 
-    pub fn update(&mut self, drift: bool, stick_x: f32, physics: &mut Physics) {
+    pub fn update(
+        &mut self,
+        drift: bool,
+        stick_x: f32,
+        wheelie: Option<&mut Wheelie>,
+        physics: &mut Physics,
+    ) {
         if let Some(inner) = &mut self.inner {
             if inner.stick_x.is_none() && stick_x != 0.0 {
                 inner.stick_x = Some(stick_x.signum() * stick_x.abs().ceil())
             }
         } else if drift {
+            if let Some(wheelie) = wheelie {
+                wheelie.cancel();
+            }
+
             physics.vel0.y = 10.0;
             physics.normal_acceleration = 0.0;
+
             self.inner = Some(Inner {
                 dir: physics.rot0.rotate(Vec3::FRONT),
                 stick_x: None,

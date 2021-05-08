@@ -30,8 +30,7 @@ impl Wheelie {
             self.frame += 1;
 
             if self.should_cancel(base_speed, physics) {
-                self.frame = 0;
-                self.rot_dec = 0.0;
+                self.cancel();
             } else {
                 self.rot = (self.rot + 0.01).min(0.07);
                 physics.rot_vec0.x *= 0.9;
@@ -56,5 +55,10 @@ impl Wheelie {
             let speed1_ratio = physics.speed1 / base_speed;
             physics.speed1 < 0.0 || speed1_ratio < 0.3
         }
+    }
+
+    pub fn cancel(&mut self) {
+        self.frame = 0;
+        self.rot_dec = 0.0;
     }
 }
