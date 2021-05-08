@@ -6,6 +6,7 @@ use crate::race::{Race, Stage};
 pub struct Lean {
     rot: f32,
     rot_diff: f32,
+    rot_cap: f32,
 }
 
 impl Lean {
@@ -13,6 +14,7 @@ impl Lean {
         Lean {
             rot: 0.0,
             rot_diff: 0.08,
+            rot_cap: 0.6,
         }
     }
 
@@ -29,6 +31,7 @@ impl Lean {
     ) {
         if race.stage() == Stage::Race {
             self.rot_diff += 0.3 * (0.1 - self.rot_diff);
+            self.rot_cap += 0.3 * (1.0 - self.rot_cap);
         }
 
         let s = if stick_x.abs() <= 0.2 || is_wheelieing {
@@ -40,8 +43,8 @@ impl Lean {
             s
         };
 
-        if self.rot.abs() > 0.6 {
-            self.rot = self.rot.signum() * 0.6;
+        if self.rot.abs() > self.rot_cap {
+            self.rot = self.rot.signum() * self.rot_cap;
         } else {
             let right = Mat33::from(physics.mat()) * Vec3::RIGHT;
             physics.vel0 += s * right;
