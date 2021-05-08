@@ -90,7 +90,11 @@ impl Physics {
         }
 
         self.stabilization_factor = if is_hopping {
-            0.5 // TODO handle bikes
+            if self.stats.vehicle.kind.is_bike() {
+                0.22
+            } else {
+                0.5
+            }
         } else {
             0.1
         }
