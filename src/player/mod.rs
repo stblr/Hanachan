@@ -164,7 +164,7 @@ impl Player {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
 
             let stick_x = self.rkg.stick_x(race.frame());
-            bike.lean.update(stick_x, bike.wheelie.is_wheelieing(), &mut self.physics);
+            bike.lean.update(stick_x, bike.wheelie.is_wheelieing(), &mut self.physics, race);
         } else {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
 
