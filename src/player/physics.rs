@@ -130,16 +130,17 @@ impl Physics {
         &mut self,
         is_boosting: bool,
         airtime: u32,
+        is_drifting: bool,
         turn: f32,
         is_wheelieing: bool,
         race: &Race,
     ) {
-        if race.stage() == Stage::Race {
+        if !is_drifting && race.stage() == Stage::Race {
             self.speed1 += self.speed1_adj;
         }
 
         let ground = airtime == 0;
-        if !is_boosting && ground {
+        if !is_boosting && ground && !is_drifting {
             let t = self.stats.common.handling_speed_multiplier;
             self.speed1 *= t + (1.0 - t) * (1.0 - turn.abs());
         }
@@ -150,7 +151,13 @@ impl Physics {
         } else if airtime > 5 {
             self.speed1 *= 0.999;
         } else if race.stage() == Stage::Race {
-            self.speed1 += self.compute_acceleration();
+            let common = self.stats.common;
+            let (ys, xs): (&[f32], &[f32]) = if is_drifting {
+                (&common.drift_acceleration_ys, &common.drift_acceleration_xs)
+            } else {
+                (&common.acceleration_ys, &common.acceleration_xs)
+            };
+            self.speed1 += self.compute_acceleration(ys, xs);
         }
 
         let base_speed = self.stats.common.base_speed;
@@ -171,18 +178,14 @@ impl Physics {
         self.vel1 = self.speed1 * vel1_dir;
     }
 
-    fn compute_acceleration(&self) -> f32 {
+    fn compute_acceleration(&self, ys: &[f32], xs: &[f32]) -> f32 {
         let t = self.speed1 / self.speed1_soft_limit;
         if t < 0.0 {
             1.0
         } else {
-            let ys = self.stats.common.acceleration_ys;
-            let xs = self.stats.common.acceleration_xs;
             match xs.iter().skip(1).position(|x| t < *x) {
-                Some(i) => {
-                    ys[i] + (ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]) * (t - xs[i])
-                },
-                None => ys[3],
+                Some(i) => ys[i] + (ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]) * (t - xs[i]),
+                None => ys[ys.len() - 1],
             }
         }
     }

@@ -90,14 +90,14 @@ pub struct CommonStats {
     pub tilt_factor: f32,
     pub acceleration_ys: [f32; 4],
     pub acceleration_xs: [f32; 4],
-    drift_acceleration_ys: [f32; 2],
-    drift_acceleration_xs: [f32; 2],
+    pub drift_acceleration_ys: [f32; 2],
+    pub drift_acceleration_xs: [f32; 2],
     pub manual_handling_tightness: f32,
     automatic_handling_tightness: f32,
     pub handling_reactivity: f32,
-    manual_drift_tightness: f32,
+    pub manual_drift_tightness: f32,
     automatic_drift_tightness: f32,
-    drift_reactivity: f32,
+    pub drift_reactivity: f32,
 }
 
 impl Parse for CommonStats {

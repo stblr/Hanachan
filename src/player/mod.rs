@@ -1,6 +1,6 @@
 mod bike;
+mod drift;
 mod handle;
-mod hop;
 mod lean;
 mod params;
 mod physics;
@@ -19,7 +19,7 @@ use crate::race::{Race, Stage};
 use crate::wii::F32Ext;
 
 use bike::Bike;
-use hop::Hop;
+use drift::Drift;
 use lean::Lean;
 use physics::Physics;
 use start_boost::StartBoost;
@@ -32,7 +32,7 @@ pub struct Player {
     rkg: Rkg,
     airtime: u32,
     start_boost: StartBoost,
-    hop: Hop,
+    drift: Drift,
     boost_frames: u16,
     turn: f32,
     diving_rot: f32,
@@ -97,7 +97,7 @@ impl Player {
             rkg,
             airtime: 0,
             start_boost: StartBoost::new(),
-            hop: Hop::new(),
+            drift: Drift::Idle,
             boost_frames: 0,
             turn: 0.0,
             diving_rot: 0.0,
@@ -128,9 +128,9 @@ impl Player {
             self.boost_frames = self.start_boost.boost_frames();
         }
 
-        self.physics.update_floor_nor(self.hop.is_hopping(), &self.wheels, ground);
+        self.physics.update_floor_nor(self.drift.is_hopping(), &self.wheels, ground);
 
-        self.physics.update_dir(self.hop.dir());
+        self.physics.update_dir(self.drift.hop_dir());
 
         self.update_turn(race);
 
@@ -138,7 +138,7 @@ impl Player {
         let drift = self.rkg.drift(frame_idx);
         let stick_x = self.rkg.stick_x(frame_idx);
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
-        self.hop.update(drift, stick_x, wheelie, &mut self.physics);
+        self.drift.update(drift, stick_x, wheelie, &mut self.physics, ground);
 
         let trick_is_up = self.rkg.trick(frame_idx) == Some(RkgTrick::Up);
         if let Some(bike) = &mut self.bike {
@@ -155,7 +155,14 @@ impl Player {
             .as_ref()
             .map(|bike| bike.wheelie.is_wheelieing())
             .unwrap_or(false);
-        self.physics.update_vel1(is_boosting, self.airtime, self.turn, is_wheelieing, race);
+        self.physics.update_vel1(
+            is_boosting,
+            self.airtime,
+            self.drift.is_drifting(),
+            self.turn,
+            is_wheelieing,
+            race,
+        );
 
         let is_bike = self.stats.vehicle.kind.is_bike();
         self.update_standstill_boost_rot(is_bike, ground, race);
@@ -163,7 +170,9 @@ impl Player {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
 
             let stick_x = self.rkg.stick_x(race.frame());
-            bike.lean.update(stick_x, bike.wheelie.is_wheelieing(), &mut self.physics, race);
+            let drift_stick_x = self.drift.drift_stick_x();
+            let is_wheelieing = bike.wheelie.is_wheelieing();
+            bike.lean.update(stick_x, drift_stick_x, is_wheelieing, &mut self.physics, race);
         } else {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
 
@@ -181,23 +190,29 @@ impl Player {
             self.physics.rot_vec0.z += self.stats.common.tilt_factor * norm * self.turn.abs();
         }
 
-        let tightness = self.stats.common.manual_handling_tightness; // TODO handle drift
-        let mut turn = self.turn * tightness;
-        if self.hop.is_hopping() {
-            turn *= 1.4;
-        }
-        turn = if self.physics.speed1.abs() < 1.0 {
-            0.0
-        } else if self.physics.speed1 < 20.0 {
-            0.4 * turn + (self.physics.speed1 / 20.0) * (turn * 0.6)
-        } else if self.physics.speed1 < 70.0 {
-            0.5 * turn + (1.0 - (self.physics.speed1 - 20.0) / (70.0 - 20.0)) * (turn * 0.5)
+        let turn = if let Some(drift_stick_x) = self.drift.drift_stick_x() {
+            let turn = 0.5 * (self.turn - drift_stick_x);
+            let turn = (0.8 * turn - 0.2 * drift_stick_x).clamp(-1.0, 1.0);
+            turn * self.stats.common.manual_drift_tightness
         } else {
-            0.5 * turn
+            let mut turn = self.turn * self.stats.common.manual_handling_tightness;
+            if self.drift.is_hopping() {
+                turn *= 1.4;
+            }
+            turn = if self.physics.speed1.abs() < 1.0 {
+                0.0
+            } else if self.physics.speed1 < 20.0 {
+                0.4 * turn + (self.physics.speed1 / 20.0) * (turn * 0.6)
+            } else if self.physics.speed1 < 70.0 {
+                0.5 * turn + (1.0 - (self.physics.speed1 - 20.0) / (70.0 - 20.0)) * (turn * 0.5)
+            } else {
+                0.5 * turn
+            };
+            if self.bike.as_ref().map(|bike| bike.wheelie.is_wheelieing()).unwrap_or(false) {
+                turn *= 0.2;
+            }
+            turn
         };
-        if self.bike.as_ref().map(|bike| bike.wheelie.is_wheelieing()).unwrap_or(false) {
-            turn *= 0.2;
-        }
         self.physics.rot_vec2.y += turn;
 
         self.diving_rot *= 0.96;
@@ -218,14 +233,18 @@ impl Player {
             wheel.update(self.bike.as_ref(), &mut self.physics);
         }
 
-        self.hop.update_physics();
+        self.drift.update_hop_physics();
 
         self.physics.update_mat();
     }
 
     fn update_turn(&mut self, race: &Race) {
-        let stick_x = self.hop.stick_x().unwrap_or(self.rkg.stick_x(race.frame()));
-        let reactivity = self.stats.common.handling_reactivity; // TODO handle drift
+        let stick_x = self.drift.hop_stick_x().unwrap_or(self.rkg.stick_x(race.frame()));
+        let reactivity = if self.drift.is_drifting() {
+            self.stats.common.drift_reactivity
+        } else {
+            self.stats.common.handling_reactivity
+        };
         self.turn = reactivity * -stick_x + (1.0 - reactivity) * self.turn;
     }
 
