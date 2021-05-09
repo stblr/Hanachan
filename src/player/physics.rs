@@ -79,14 +79,16 @@ impl Physics {
         self.mat
     }
 
-    pub fn update_floor_nor(&mut self, is_hopping: bool, wheels: &Vec<Wheel>) {
+    pub fn update_floor_nor(&mut self, is_hopping: bool, wheels: &Vec<Wheel>, ground: bool) {
         if !is_hopping {
-            self.floor_nor = wheels
-                .iter()
-                .filter_map(|wheel| wheel.floor_nor)
-                .reduce(Add::add)
-                .map(|floor_nor| floor_nor.normalize())
-                .unwrap_or(Vec3::UP);
+            if ground {
+                self.floor_nor = wheels
+                    .iter()
+                    .filter_map(|wheel| wheel.floor_nor)
+                    .reduce(Add::add)
+                    .map(|floor_nor| floor_nor.normalize())
+                    .unwrap_or(Vec3::UP);
+            }
         }
 
         self.stabilization_factor = if is_hopping {

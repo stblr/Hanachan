@@ -12,7 +12,7 @@ impl Hop {
     }
 
     pub fn is_hopping(&self) -> bool {
-        self.inner.is_some()
+        self.inner.as_ref().map(|inner| inner.pos_y > 0.0).unwrap_or(false)
     }
 
     pub fn dir(&self) -> Option<Vec3> {
@@ -45,13 +45,33 @@ impl Hop {
             self.inner = Some(Inner {
                 dir: physics.rot0.rotate(Vec3::FRONT),
                 stick_x: None,
+                pos_y: 0.0,
+                vel_y: 10.0,
             });
+        }
+    }
+
+    pub fn update_physics(&mut self) {
+        if let Some(inner) = &mut self.inner {
+            let drag_factor = 0.998;
+            inner.vel_y *= drag_factor;
+            let gravity = -1.3;
+            inner.vel_y += gravity;
+
+            inner.pos_y += inner.vel_y;
+
+            if inner.pos_y < 0.0 {
+                inner.vel_y = 0.0;
+                inner.pos_y = 0.0;
+            }
         }
     }
 }
 
 #[derive(Clone, Debug)]
 struct Inner {
-    pub dir: Vec3,
-    pub stick_x: Option<f32>,
+    dir: Vec3,
+    stick_x: Option<f32>,
+    pos_y: f32,
+    vel_y: f32,
 }

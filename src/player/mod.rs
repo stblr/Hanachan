@@ -128,13 +128,12 @@ impl Player {
             self.boost_frames = self.start_boost.boost_frames();
         }
 
-        self.physics.update_floor_nor(self.hop.is_hopping(), &self.wheels);
+        self.physics.update_floor_nor(self.hop.is_hopping(), &self.wheels, ground);
 
         self.physics.update_dir(self.hop.dir());
 
         self.update_turn(race);
 
-        let last_is_hopping = self.hop.is_hopping(); // FIXME the game uses some f32 value instead
         let frame_idx = race.frame();
         let drift = self.rkg.drift(frame_idx);
         let stick_x = self.rkg.stick_x(frame_idx);
@@ -184,7 +183,7 @@ impl Player {
 
         let tightness = self.stats.common.manual_handling_tightness; // TODO handle drift
         let mut turn = self.turn * tightness;
-        if self.hop.is_hopping() && last_is_hopping {
+        if self.hop.is_hopping() {
             turn *= 1.4;
         }
         turn = if self.physics.speed1.abs() < 1.0 {
@@ -218,6 +217,8 @@ impl Player {
         for wheel in &mut self.wheels {
             wheel.update(self.bike.as_ref(), &mut self.physics);
         }
+
+        self.hop.update_physics();
 
         self.physics.update_mat();
     }
