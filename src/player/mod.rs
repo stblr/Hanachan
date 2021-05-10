@@ -62,6 +62,8 @@ impl Player {
 
         let stats = vehicle_stats.merge_with(*character_stats);
 
+        let drift = Drift::new(stats.common.mt_duration as u16);
+
         let bike = stats.vehicle.kind.is_bike().then(|| Bike::new());
 
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
@@ -97,7 +99,7 @@ impl Player {
             rkg,
             airtime: 0,
             start_boost: StartBoost::new(),
-            drift: Drift::Idle,
+            drift,
             boost_frames: 0,
             turn: 0.0,
             diving_rot: 0.0,
@@ -138,7 +140,7 @@ impl Player {
         let drift = self.rkg.drift(frame_idx);
         let stick_x = self.rkg.stick_x(frame_idx);
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
-        self.drift.update(drift, stick_x, wheelie, &mut self.physics, ground);
+        self.drift.update(drift, stick_x, &mut self.boost_frames, wheelie, &mut self.physics, ground);
 
         let trick_is_up = self.rkg.trick(frame_idx) == Some(RkgTrick::Up);
         if let Some(bike) = &mut self.bike {

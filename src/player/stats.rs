@@ -98,6 +98,7 @@ pub struct CommonStats {
     pub manual_drift_tightness: f32,
     automatic_drift_tightness: f32,
     pub drift_reactivity: f32,
+    pub mt_duration: u32,
 }
 
 impl Parse for CommonStats {
@@ -118,7 +119,9 @@ impl Parse for CommonStats {
         let manual_drift_tightness = input.take()?;
         let automatic_drift_tightness = input.take()?;
         let drift_reactivity = input.take()?;
-        input.skip(0x18c - 0x64)?;
+        input.skip(0x8)?;
+        let mt_duration = input.take()?;
+        input.skip(0x18c - 0x70)?;
 
         Ok(CommonStats {
             weight,
@@ -135,6 +138,7 @@ impl Parse for CommonStats {
             manual_drift_tightness,
             automatic_drift_tightness,
             drift_reactivity,
+            mt_duration,
         })
     }
 }
@@ -162,6 +166,7 @@ impl Add for CommonStats {
         self.manual_drift_tightness += other.manual_drift_tightness;
         self.automatic_drift_tightness += other.automatic_drift_tightness;
         self.drift_reactivity += other.drift_reactivity;
+        self.mt_duration += other.mt_duration;
         self
     }
 }
