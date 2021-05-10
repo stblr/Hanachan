@@ -82,7 +82,7 @@ impl Quat {
 
     pub fn slerp_to(self, other: Quat, t: f32) -> Quat {
         let dot = self.dot(other).clamp(-1.0, 1.0);
-        let angle = dot.abs().acos(); // TODO wii_acos?
+        let angle = (dot.abs() as f64).acos() as f32; // TODO wii_acos?
         let sin = angle.wii_sin();
 
         let (s, t) = if sin.abs() >= 1e-5 {
