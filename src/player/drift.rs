@@ -1,5 +1,5 @@
 use crate::geom::Vec3;
-use crate::player::{Physics, Wheelie};
+use crate::player::{Boost, BoostKind, Physics, Wheelie};
 
 #[derive(Clone, Debug)]
 pub struct Drift {
@@ -54,7 +54,7 @@ impl Drift {
         &mut self,
         drift_input: bool,
         stick_x: f32,
-        boost_frames: &mut u16,
+        boost: &mut Boost,
         wheelie: Option<&mut Wheelie>,
         physics: &mut Physics,
         ground: bool,
@@ -109,7 +109,7 @@ impl Drift {
                 *mt_charge = (*mt_charge + mt_charge_inc).min(270);
             } else {
                 if *mt_charge >= 270 {
-                    *boost_frames = self.mt_duration;
+                    boost.activate(BoostKind::Weak, self.mt_duration);
                 }
 
                 self.state = State::Idle;

@@ -1,4 +1,5 @@
 mod bike;
+mod boost;
 mod drift;
 mod handle;
 mod lean;
@@ -20,6 +21,7 @@ use crate::race::{Race, Stage};
 use crate::wii::F32Ext;
 
 use bike::Bike;
+use boost::{Boost, Kind as BoostKind};
 use drift::Drift;
 use lean::Lean;
 use physics::Physics;
@@ -35,7 +37,7 @@ pub struct Player {
     airtime: u32,
     start_boost: StartBoost,
     drift: Drift,
-    boost_frames: u16,
+    boost: Boost,
     turn: Turn,
     diving_rot: f32,
     standstill_boost_rot: f32, // TODO maybe rename
@@ -104,7 +106,7 @@ impl Player {
             airtime: 0,
             start_boost: StartBoost::new(),
             drift,
-            boost_frames: 0,
+            boost: Boost::new(),
             turn,
             diving_rot: 0.0,
             standstill_boost_rot: 0.0,
@@ -131,7 +133,7 @@ impl Player {
         if race.stage() == Stage::Countdown {
             self.start_boost.update(self.rkg.accelerate(race.frame()));
         } else if race.frame() == 411 {
-            self.boost_frames = self.start_boost.boost_frames();
+            self.boost.activate(BoostKind::Weak, self.start_boost.boost_frames());
         }
 
         self.physics.update_floor_nor(self.drift.is_hopping(), &self.wheels, ground);
@@ -144,7 +146,7 @@ impl Player {
 
         let drift = self.rkg.drift(frame_idx);
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
-        self.drift.update(drift, stick_x, &mut self.boost_frames, wheelie, &mut self.physics, ground);
+        self.drift.update(drift, stick_x, &mut self.boost, wheelie, &mut self.physics, ground);
 
         if let Some(bike) = &mut self.bike {
             let base_speed = self.stats.common.base_speed;
@@ -153,10 +155,7 @@ impl Player {
             bike.wheelie.update(base_speed, trick_is_up, is_drifting, &mut self.physics);
         }
 
-        let is_boosting = self.boost_frames > 0;
-        if is_boosting {
-            self.boost_frames -= 1;
-        }
+        self.boost.update();
 
         let is_wheelieing = self
             .bike
@@ -164,16 +163,15 @@ impl Player {
             .map(|bike| bike.wheelie.is_wheelieing())
             .unwrap_or(false);
         self.physics.update_vel1(
-            is_boosting,
             self.airtime,
             self.drift.is_drifting(),
+            &self.boost,
             self.turn.raw(),
             is_wheelieing,
             race,
         );
 
-        let is_bike = self.stats.vehicle.kind.is_bike();
-        self.update_standstill_boost_rot(is_bike, ground, race);
+        self.update_standstill_boost_rot(ground, race);
         if let Some(bike) = &mut self.bike {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
 
@@ -211,7 +209,7 @@ impl Player {
             self.physics.rot_vec2.x += self.diving_rot;
         }
 
-        self.physics.update(is_bike, race);
+        self.physics.update(race);
 
         for wheel in &mut self.wheels {
             wheel.update(self.bike.as_ref(), &mut self.physics);
@@ -220,9 +218,13 @@ impl Player {
         self.drift.update_hop_physics();
 
         self.physics.update_mat();
+
+        if self.rkg.use_item(race.frame()) {
+            self.boost.activate(BoostKind::Strong, 90);
+        }
     }
 
-    fn update_standstill_boost_rot(&mut self, is_bike: bool, ground: bool, race: &Race) {
+    fn update_standstill_boost_rot(&mut self, ground: bool, race: &Race) {
         if !ground {
             self.standstill_boost_rot = 0.0;
         } else if race.stage() == Stage::Countdown {
@@ -230,12 +232,24 @@ impl Player {
             self.standstill_boost_rot += inc;
         } else {
             let acceleration = (self.physics.speed1 - self.physics.last_speed1).clamp(-3.0, 3.0);
-            let factor = if is_bike {
-                0.2
+
+            let is_bike = self.stats.vehicle.kind.is_bike();
+            let vehicle_factor = if is_bike { 0.2 } else { 1.0 };
+
+            let is_wheelieing = self
+                .bike
+                .as_ref()
+                .map(|bike| bike.wheelie.is_wheelieing())
+                .unwrap_or(false);
+            let (boost_factor, wheelie_factor) = if self.boost.is_strong() {
+                let wheelie_factor = if is_wheelieing { 0.5 } else { 1.0 };
+                (0.25, wheelie_factor)
             } else {
-                1.0
+                (0.08, 1.0)
             };
-            let inc = factor * (-acceleration * 0.15 * 0.08 - self.standstill_boost_rot);
+
+            let val = -acceleration * 0.15 * boost_factor * wheelie_factor;
+            let inc = vehicle_factor * (val - self.standstill_boost_rot);
             self.standstill_boost_rot += inc;
         }
     }

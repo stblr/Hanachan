@@ -1,7 +1,7 @@
 use std::ops::Add;
 
 use crate::geom::{Mat33, Mat34, Quat, Vec3};
-use crate::player::{Stats, Wheel};
+use crate::player::{Boost, Stats, Wheel};
 use crate::race::{Race, Stage};
 
 #[derive(Clone, Debug)]
@@ -128,9 +128,9 @@ impl Physics {
 
     pub fn update_vel1(
         &mut self,
-        is_boosting: bool,
         airtime: u32,
         is_drifting: bool,
+        boost: &Boost,
         raw_turn: f32,
         is_wheelieing: bool,
         race: &Race,
@@ -140,14 +140,14 @@ impl Physics {
         }
 
         let ground = airtime == 0;
-        if !is_boosting && ground && !is_drifting {
+        if !boost.is_boosting() && ground && !is_drifting {
             let t = self.stats.common.handling_speed_multiplier;
             self.speed1 *= t + (1.0 - t) * (1.0 - raw_turn.abs());
         }
 
         self.last_speed1 = self.speed1;
-        if is_boosting {
-            self.speed1 += 3.0;
+        if let Some(boost_acceleration) = boost.acceleration() {
+            self.speed1 += boost_acceleration;
         } else if airtime > 5 {
             self.speed1 *= 0.999;
         } else if race.stage() == Stage::Race {
@@ -161,7 +161,7 @@ impl Physics {
         }
 
         let base_speed = self.stats.common.base_speed;
-        let boost_factor = if is_boosting { 1.2 } else { 1.0 };
+        let boost_factor = boost.factor();
         let wheelie_bonus = if is_wheelieing { 0.15 } else { 0.0 };
         let next_speed1_soft_limit = base_speed * (boost_factor + wheelie_bonus);
         self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_speed1_soft_limit);
@@ -190,7 +190,9 @@ impl Physics {
         }
     }
 
-    pub fn update(&mut self, is_bike: bool, race: &Race) {
+    pub fn update(&mut self, race: &Race) {
+        let is_bike = self.stats.vehicle.kind.is_bike();
+
         if race.stage() != Stage::Race {
             if is_bike {
                 self.vel0 = self.vel0.rej_unit(self.floor_nor);

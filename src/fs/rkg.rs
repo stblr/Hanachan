@@ -23,6 +23,14 @@ impl Rkg {
             .unwrap_or(false)
     }
 
+    pub fn use_item(&self, frame: u32) -> bool {
+        frame
+            .checked_sub(172)
+            .and_then(|frame| self.frames.get(frame as usize))
+            .map(|frame| frame.use_item)
+            .unwrap_or(false)
+    }
+
     pub fn drift(&self, frame: u32) -> bool {
         frame
             .checked_sub(172)

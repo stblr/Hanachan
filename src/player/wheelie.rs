@@ -32,7 +32,7 @@ impl Wheelie {
         is_drifting: bool,
         physics: &mut Physics,
     ) {
-        if self.frame > 0 || trick_is_up {
+        if self.frame > 0 || (trick_is_up && !is_drifting) {
             self.frame += 1;
 
             if self.should_cancel(base_speed, physics) {
