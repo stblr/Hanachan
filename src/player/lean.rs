@@ -38,7 +38,7 @@ impl Lean {
         let (rot_min, rot_max, s) = match drift_stick_x {
             Some(drift_stick_x) => {
                 if stick_x == 0.0 {
-                    self.rot -= 0.05 * (0.5 * drift_stick_x + self.rot);
+                    self.rot += 0.05 * (0.5 * drift_stick_x - self.rot);
                 } else {
                     self.rot += 0.05 * stick_x
                 }
