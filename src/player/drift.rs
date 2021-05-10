@@ -69,6 +69,7 @@ impl Drift {
                 physics.normal_acceleration = 0.0;
 
                 self.state = State::Hop {
+                    frame: 0,
                     dir: physics.rot0.rotate(Vec3::FRONT),
                     stick_x: None,
                     pos_y: 0.0,
@@ -76,13 +77,17 @@ impl Drift {
                 };
             }
             State::Hop {
+                frame,
                 stick_x: hop_stick_x,
                 ..
             } => {
+                *frame = (*frame + 1).min(3);
+
                 if hop_stick_x.is_none() && stick_x != 0.0 {
                     *hop_stick_x = Some(stick_x.signum() * stick_x.abs().ceil())
                 }
-                if ground {
+
+                if *frame >= 3 && ground {
                     if let Some(hop_stick_x) = hop_stick_x {
                         self.state = State::Drift {
                             stick_x: *hop_stick_x,
@@ -133,6 +138,7 @@ impl Drift {
 enum State {
     Idle,
     Hop {
+        frame: u8,
         dir: Vec3,
         stick_x: Option<f32>,
         pos_y: f32,
