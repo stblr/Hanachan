@@ -25,7 +25,13 @@ impl Wheelie {
         self.rot
     }
 
-    pub fn update(&mut self, base_speed: f32, trick_is_up: bool, physics: &mut Physics) {
+    pub fn update(
+        &mut self,
+        base_speed: f32,
+        trick_is_up: bool,
+        is_drifting: bool,
+        physics: &mut Physics,
+    ) {
         if self.frame > 0 || trick_is_up {
             self.frame += 1;
 

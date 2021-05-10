@@ -146,9 +146,11 @@ impl Player {
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
         self.drift.update(drift, stick_x, &mut self.boost_frames, wheelie, &mut self.physics, ground);
 
-        let trick_is_up = self.rkg.trick(frame_idx) == Some(RkgTrick::Up);
         if let Some(bike) = &mut self.bike {
-            bike.wheelie.update(self.stats.common.base_speed, trick_is_up, &mut self.physics);
+            let base_speed = self.stats.common.base_speed;
+            let trick_is_up = self.rkg.trick(frame_idx) == Some(RkgTrick::Up);
+            let is_drifting = self.drift.is_drifting();
+            bike.wheelie.update(base_speed, trick_is_up, is_drifting, &mut self.physics);
         }
 
         let is_boosting = self.boost_frames > 0;
