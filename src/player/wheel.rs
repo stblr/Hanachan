@@ -57,7 +57,7 @@ impl Wheel {
         }
         self.hitbox_radius = bsp_wheel.hitbox_radius;
 
-        self.axis_s = axis.dot(self.pos - topmost_pos).max(0.0);
+        self.axis_s = axis.dot(self.pos - topmost_pos).clamp(0.0, bsp_wheel.slack_y);
         self.pos = topmost_pos + self.axis_s * axis;
 
         let pos_rel = self.pos - topmost_pos;
