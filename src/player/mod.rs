@@ -6,6 +6,7 @@ mod params;
 mod physics;
 mod start_boost;
 mod stats;
+mod turn;
 mod wheel;
 mod wheelie;
 
@@ -23,6 +24,7 @@ use drift::Drift;
 use lean::Lean;
 use physics::Physics;
 use start_boost::StartBoost;
+use turn::Turn;
 use wheel::Wheel;
 use wheelie::Wheelie;
 
@@ -34,7 +36,7 @@ pub struct Player {
     start_boost: StartBoost,
     drift: Drift,
     boost_frames: u16,
-    turn: f32,
+    turn: Turn,
     diving_rot: f32,
     standstill_boost_rot: f32, // TODO maybe rename
     bike: Option<Bike>,
@@ -63,6 +65,8 @@ impl Player {
         let stats = vehicle_stats.merge_with(*character_stats);
 
         let drift = Drift::new(stats.common.mt_duration as u16);
+
+        let turn = Turn::new(&stats.common);
 
         let bike = stats.vehicle.kind.is_bike().then(|| Bike::new());
 
@@ -101,7 +105,7 @@ impl Player {
             start_boost: StartBoost::new(),
             drift,
             boost_frames: 0,
-            turn: 0.0,
+            turn,
             diving_rot: 0.0,
             standstill_boost_rot: 0.0,
             bike,
@@ -134,11 +138,11 @@ impl Player {
 
         self.physics.update_dir(self.drift.hop_dir());
 
-        self.update_turn(race);
-
         let frame_idx = race.frame();
-        let drift = self.rkg.drift(frame_idx);
         let stick_x = self.rkg.stick_x(frame_idx);
+        self.turn.update(stick_x, &self.drift);
+
+        let drift = self.rkg.drift(frame_idx);
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
         self.drift.update(drift, stick_x, &mut self.boost_frames, wheelie, &mut self.physics, ground);
 
@@ -161,7 +165,7 @@ impl Player {
             is_boosting,
             self.airtime,
             self.drift.is_drifting(),
-            self.turn,
+            self.turn.raw(),
             is_wheelieing,
             race,
         );
@@ -173,7 +177,6 @@ impl Player {
 
             let stick_x = self.rkg.stick_x(race.frame());
             let drift_stick_x = self.drift.drift_stick_x();
-            let is_wheelieing = bike.wheelie.is_wheelieing();
             bike.lean.update(stick_x, drift_stick_x, is_wheelieing, &mut self.physics, race);
         } else {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
@@ -189,33 +192,10 @@ impl Player {
             } else {
                 0.0
             };
-            self.physics.rot_vec0.z += self.stats.common.tilt_factor * norm * self.turn.abs();
+            self.physics.rot_vec0.z += self.stats.common.tilt_factor * norm * self.turn.raw().abs();
         }
 
-        let turn = if let Some(drift_stick_x) = self.drift.drift_stick_x() {
-            let turn = 0.5 * (self.turn - drift_stick_x);
-            let turn = (0.8 * turn - 0.2 * drift_stick_x).clamp(-1.0, 1.0);
-            turn * self.stats.common.manual_drift_tightness
-        } else {
-            let mut turn = self.turn * self.stats.common.manual_handling_tightness;
-            if self.drift.is_hopping() {
-                turn *= 1.4;
-            }
-            turn = if self.physics.speed1.abs() < 1.0 {
-                0.0
-            } else if self.physics.speed1 < 20.0 {
-                0.4 * turn + (self.physics.speed1 / 20.0) * (turn * 0.6)
-            } else if self.physics.speed1 < 70.0 {
-                0.5 * turn + (1.0 - (self.physics.speed1 - 20.0) / (70.0 - 20.0)) * (turn * 0.5)
-            } else {
-                0.5 * turn
-            };
-            if self.bike.as_ref().map(|bike| bike.wheelie.is_wheelieing()).unwrap_or(false) {
-                turn *= 0.2;
-            }
-            turn
-        };
-        self.physics.rot_vec2.y += turn;
+        self.turn.update_rot(&self.drift, is_wheelieing, &mut self.physics);
 
         self.diving_rot *= 0.96;
         if !ground {
@@ -238,16 +218,6 @@ impl Player {
         self.drift.update_hop_physics();
 
         self.physics.update_mat();
-    }
-
-    fn update_turn(&mut self, race: &Race) {
-        let stick_x = self.drift.hop_stick_x().unwrap_or(self.rkg.stick_x(race.frame()));
-        let reactivity = if self.drift.is_drifting() {
-            self.stats.common.drift_reactivity
-        } else {
-            self.stats.common.handling_reactivity
-        };
-        self.turn = reactivity * -stick_x + (1.0 - reactivity) * self.turn;
     }
 
     fn update_standstill_boost_rot(&mut self, is_bike: bool, ground: bool, race: &Race) {

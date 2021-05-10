@@ -131,7 +131,7 @@ impl Physics {
         is_boosting: bool,
         airtime: u32,
         is_drifting: bool,
-        turn: f32,
+        raw_turn: f32,
         is_wheelieing: bool,
         race: &Race,
     ) {
@@ -142,7 +142,7 @@ impl Physics {
         let ground = airtime == 0;
         if !is_boosting && ground && !is_drifting {
             let t = self.stats.common.handling_speed_multiplier;
-            self.speed1 *= t + (1.0 - t) * (1.0 - turn.abs());
+            self.speed1 *= t + (1.0 - t) * (1.0 - raw_turn.abs());
         }
 
         self.last_speed1 = self.speed1;
