@@ -105,7 +105,13 @@ impl Physics {
                 0.5
             }
         } else {
-            0.1
+            let front = Mat33::from(self.mat) * Vec3::FRONT;
+            let dot = front.dot(self.floor_nor);
+            if dot < -0.1 {
+                0.1 + (0.5 * dot.abs().min(0.2))
+            } else {
+                0.1
+            }
         }
     }
 
