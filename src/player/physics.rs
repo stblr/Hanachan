@@ -9,7 +9,7 @@ use crate::race::{Race, Stage};
 pub struct Physics {
     stats: Stats,
     pub inv_inertia_tensor: Mat34,
-    rot_factor: f32,
+    pub rot_factor: f32,
     pub mat: Mat34,
     pub floor_nor: Vec3,
     pub dir: Vec3,
@@ -32,7 +32,7 @@ pub struct Physics {
 }
 
 impl Physics {
-    pub fn new(stats: Stats, bsp: Bsp, ktpt_pos: Vec3) -> Physics {
+    pub fn new(stats: Stats, bsp: &Bsp, ktpt_pos: Vec3) -> Physics {
         let masses = [1.0 / 12.0, 1.0];
         let inertia_tensor = masses
             .iter()

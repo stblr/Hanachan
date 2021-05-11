@@ -1,10 +1,12 @@
+use std::iter;
+
 use crate::fs::{Error, Parse, ResultExt, SliceRefExt};
 use crate::geom::Vec3;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Bsp {
     pub initial_pos_y: f32,
-    pub hitboxes: [Option<Hitbox>; 16],
+    pub hitboxes: Vec<Hitbox>,
     pub cuboids: [Vec3; 2],
     pub rot_factor: f32,
     pub wheels: [Wheel; 2],
@@ -13,10 +15,10 @@ pub struct Bsp {
 impl Parse for Bsp {
     fn parse(input: &mut &[u8]) -> Result<Bsp, Error> {
         let initial_pos_y = input.take()?;
-        let mut hitboxes = [None; 16];
-        for i in 0..16 {
-            hitboxes[i] = input.take()?;
-        }
+        let hitboxes = iter::repeat_with(|| input.take())
+            .take(16)
+            .filter_map(Result::transpose)
+            .collect::<Result<_, _>>()?;
         let cuboids = [input.take()?, input.take()?];
         let rot_factor = input.take()?;
         let _unknown: f32 = input.take()?;
@@ -34,9 +36,9 @@ impl Parse for Bsp {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Hitbox {
-    pos: Vec3,
-    radius: f32,
-    walls_only: bool,
+    pub pos: Vec3,
+    pub radius: f32,
+    pub walls_only: bool,
 }
 
 impl Parse for Option<Hitbox> {

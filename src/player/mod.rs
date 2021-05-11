@@ -8,6 +8,7 @@ mod physics;
 mod start_boost;
 mod stats;
 mod turn;
+mod vehicle_body;
 mod wheel;
 mod wheelie;
 
@@ -27,6 +28,7 @@ use lean::Lean;
 use physics::Physics;
 use start_boost::StartBoost;
 use turn::Turn;
+use vehicle_body::VehicleBody;
 use wheel::Wheel;
 use wheelie::Wheelie;
 
@@ -43,6 +45,7 @@ pub struct Player {
     standstill_boost_rot: f32, // TODO maybe rename
     bike: Option<Bike>,
     physics: Physics,
+    vehicle_body: VehicleBody,
     wheels: Vec<Wheel>,
 }
 
@@ -73,10 +76,12 @@ impl Player {
         let bike = stats.vehicle.kind.is_bike().then(|| Bike::new());
 
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
-        let bsp = *common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
+        let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
 
         let ktpt_pos = Vec3::new(-14720.0, 1000.0, -2954.655); // TODO load from Kmp
         let physics = Physics::new(stats, bsp, ktpt_pos);
+
+        let vehicle_body = VehicleBody::new(bsp.hitboxes.clone());
 
         let bike_parts_disp_param = common_szs
             .get_node("./bikePartsDispParam.bin")?
@@ -111,6 +116,7 @@ impl Player {
             standstill_boost_rot: 0.0,
             bike,
             physics,
+            vehicle_body,
             wheels,
         })
     }
@@ -209,6 +215,8 @@ impl Player {
         }
 
         self.physics.update(race);
+
+        self.vehicle_body.update(&mut self.physics);
 
         for wheel in &mut self.wheels {
             wheel.update(self.bike.as_ref(), &mut self.physics);

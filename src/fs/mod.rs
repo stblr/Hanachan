@@ -10,7 +10,7 @@ mod rkrd;
 mod u8;
 
 pub use self::u8::U8;
-pub use bsp::{Bsp, Wheel as BspWheel};
+pub use bsp::{Bsp, Hitbox as BspHitbox, Wheel as BspWheel};
 pub use parse::{Bits, Error, Parse, ResultExt, SliceExt, SliceRefExt};
 pub use rkg::{Rkg, Trick as RkgTrick};
 pub use rkrd::Rkrd;
