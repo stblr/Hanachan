@@ -4,7 +4,51 @@ A reimplementation of the physics engine of Mario Kart Wii, aiming for perfectly
 
 ## Status
 
-At the moment, it is possible to replay the rMC3 Flame Runner BKT for 411 frames (that is, until the actual start of the race).
+At the moment, it is possible to replay the rMC3 WR for 1518 frames (until the end of the shroom where the rotation is affected by off-road).
+
+## May 2021 roadmap
+
+- [ ] More vehicles
+  - [ ] Karts
+  - [ ] Outside-drifting bikes
+  - [ ] Quacker
+  - [ ] Blue Falcon
+- [ ] RKRD improvements
+  - [ ] Rewrite as a GCT
+  - [ ] Automation options
+- [ ] KMP features
+  - [ ] KTPT
+  - [ ] CKPT/CKPH
+  - [ ] POTI
+  - [ ] AREA
+  - [ ] JGPT
+  - [ ] CNPT
+- [ ] KCL features
+  - [ ] Floor collision
+  - [ ] Wall collision
+  - [ ] Off-road properties
+  - [ ] Boost panels
+  - [ ] Ramps
+  - [ ] OOB
+  - [ ] Cannons
+  - [ ] Moving road
+- [ ] Driving mechanics
+  - [ ] SSMTs
+  - [ ] Tricks
+  - [ ] Respawn boost
+  - [ ] Nosediving/taildiving
+  - [ ] Slip drifts
+- [ ] CLI overhaul
+  - [ ] Make RKRD optional
+  - [ ] Multiple runs
+  - [ ] Configurable output
+- [ ] 3D renderer
+  - [ ] Collision (KCL/BSP) view
+  - [ ] BRRES view
+    - [ ] Basic MDL0
+    - [ ] Advanced MDL0
+    - [ ] TEX0
+    - [ ] CHR0
 
 ## Future plans
 
