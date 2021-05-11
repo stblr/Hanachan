@@ -226,7 +226,12 @@ impl Player {
 
         self.physics.update_mat();
 
-        if self.rkg.use_item(race.frame()) {
+        let last_use_item = race
+            .frame()
+            .checked_sub(1)
+            .map(|last_frame| self.rkg.use_item(last_frame))
+            .unwrap_or(false);
+        if self.rkg.use_item(race.frame()) && !last_use_item {
             self.boost.activate(BoostKind::Strong, 90);
         }
     }
