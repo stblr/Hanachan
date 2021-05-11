@@ -71,7 +71,7 @@ At the moment, the codebase is evolving very fast and there is still some code I
 
 Note: the vast majority of research and development happens on the PAL version of the game.
 
-Ghidra project: ETA first week of February 2021
+[Ghidra project](https://drive.google.com/drive/folders/1I1VRfeut3NtPeddePutfAaZhduVdKhhc?usp=sharing)
 
 [mkw-structures](https://github.com/SeekyCt/mkw-structures)
 
