@@ -1,14 +1,15 @@
 use std::ops::Add;
 
+use crate::fs::Bsp;
 use crate::geom::{Mat33, Mat34, Quat, Vec3};
 use crate::player::{Boost, Stats, Wheel};
 use crate::race::{Race, Stage};
 
 #[derive(Clone, Debug)]
 pub struct Physics {
-    pub stats: Stats,
+    stats: Stats,
     pub inv_inertia_tensor: Mat34,
-    pub rot_factor: f32,
+    rot_factor: f32,
     pub mat: Mat34,
     pub floor_nor: Vec3,
     pub dir: Vec3,
@@ -31,16 +32,20 @@ pub struct Physics {
 }
 
 impl Physics {
-    pub fn new(stats: Stats, cuboids: [Vec3; 2], rot_factor: f32, pos: Vec3) -> Physics {
+    pub fn new(stats: Stats, bsp: Bsp, ktpt_pos: Vec3) -> Physics {
         let masses = [1.0 / 12.0, 1.0];
-        let mut inertia_tensor = Vec3::ZERO;
-        for i in 0..2 {
-            inertia_tensor += Vec3::new(
-                masses[i] * (cuboids[i].y * cuboids[i].y + cuboids[i].z * cuboids[i].z),
-                masses[i] * (cuboids[i].z * cuboids[i].z + cuboids[i].x * cuboids[i].x),
-                masses[i] * (cuboids[i].x * cuboids[i].x + cuboids[i].y * cuboids[i].y),
-            );
-        }
+        let inertia_tensor = masses
+            .iter()
+            .zip(bsp.cuboids.iter())
+            .map(|(mass, cuboid)| {
+                Vec3::new(
+                    mass * (cuboid.y * cuboid.y + cuboid.z * cuboid.z),
+                    mass * (cuboid.z * cuboid.z + cuboid.x * cuboid.x),
+                    mass * (cuboid.x * cuboid.x + cuboid.y * cuboid.y),
+                )
+            })
+            .reduce(Add::add)
+            .unwrap();
         let det = inertia_tensor.x * inertia_tensor.y * inertia_tensor.z;
         let inv_inertia_tensor = Vec3::new(
             det.recip() * (inertia_tensor.y * inertia_tensor.z),
@@ -49,10 +54,12 @@ impl Physics {
         );
         let inv_inertia_tensor = Mat34::from_diag(inv_inertia_tensor);
 
+        let pos = ktpt_pos + Vec3::new(0.0, bsp.initial_pos_y, 0.0);
+
         Physics {
             stats,
             inv_inertia_tensor,
-            rot_factor,
+            rot_factor: bsp.rot_factor,
             mat: Mat34::from_quat_and_pos(Quat::BACK, pos),
             floor_nor: Vec3::UP,
             dir: Vec3::BACK,

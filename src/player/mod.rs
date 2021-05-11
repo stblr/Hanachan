@@ -73,11 +73,10 @@ impl Player {
         let bike = stats.vehicle.kind.is_bike().then(|| Bike::new());
 
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
-        let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
+        let bsp = *common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
 
-        let mut pos = Vec3::new(-14720.0, 1000.0, -2954.655); // TODO load from Kmp
-        pos.y += bsp.initial_pos_y;
-        let physics = Physics::new(stats, bsp.cuboids, bsp.rot_factor, pos);
+        let ktpt_pos = Vec3::new(-14720.0, 1000.0, -2954.655); // TODO load from Kmp
+        let physics = Physics::new(stats, bsp, ktpt_pos);
 
         let bike_parts_disp_param = common_szs
             .get_node("./bikePartsDispParam.bin")?
@@ -96,7 +95,7 @@ impl Player {
                 if i % 2 == 1 {
                     bsp_wheel.mirror_x_pos();
                 }
-                Wheel::new(handle, bsp_wheel, pos)
+                Wheel::new(handle, bsp_wheel, physics.pos)
             })
             .collect();
 
