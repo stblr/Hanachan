@@ -45,7 +45,7 @@ impl Turn {
 
     pub fn update_rot(&self, drift: &Drift, is_wheelieing: bool, physics: &mut Physics) {
         physics.rot_vec2.y += if drift.is_drifting() {
-            self.drift * self.manual_drift_tightness
+            self.drift * (self.manual_drift_tightness + drift.outside_drift_turn_bonus())
         } else {
             let rot = self.drift * self.manual_handling_tightness;
 

@@ -49,6 +49,15 @@ pub enum VehicleKind {
 }
 
 impl VehicleKind {
+    pub fn is_inside_drift(&self) -> bool {
+        match self {
+            VehicleKind::OutsideDriftingFourWheeledKart => false,
+            VehicleKind::OutsideDriftingThreeWheeledKart => false,
+            VehicleKind::OutsideDriftingBike => false,
+            VehicleKind::InsideDriftingBike => true,
+        }
+    }
+
     pub fn is_bike(&self) -> bool {
         match self {
             VehicleKind::OutsideDriftingFourWheeledKart => false,
@@ -98,6 +107,8 @@ pub struct CommonStats {
     pub manual_drift_tightness: f32,
     automatic_drift_tightness: f32,
     pub drift_reactivity: f32,
+    pub outside_drift_target_angle: f32,
+    pub outside_drift_dec: f32,
     pub mt_duration: u32,
 }
 
@@ -119,7 +130,8 @@ impl Parse for CommonStats {
         let manual_drift_tightness = input.take()?;
         let automatic_drift_tightness = input.take()?;
         let drift_reactivity = input.take()?;
-        input.skip(0x8)?;
+        let outside_drift_target_angle = input.take()?;
+        let outside_drift_dec = input.take()?;
         let mt_duration = input.take()?;
         input.skip(0x18c - 0x70)?;
 
@@ -138,6 +150,8 @@ impl Parse for CommonStats {
             manual_drift_tightness,
             automatic_drift_tightness,
             drift_reactivity,
+            outside_drift_target_angle,
+            outside_drift_dec,
             mt_duration,
         })
     }

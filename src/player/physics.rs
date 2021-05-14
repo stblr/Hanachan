@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use crate::fs::Bsp;
 use crate::geom::{Mat33, Mat34, Quat, Vec3};
-use crate::player::{Boost, Stats, Wheel};
+use crate::player::{Boost, Drift, Stats, Wheel};
 use crate::race::{Race, Stage};
 
 #[derive(Clone, Debug)]
@@ -86,7 +86,13 @@ impl Physics {
         self.mat
     }
 
-    pub fn update_floor_nor(&mut self, is_hopping: bool, wheels: &Vec<Wheel>, ground: bool) {
+    pub fn update_floor_nor(
+        &mut self,
+        ground: bool,
+        is_landing: bool,
+        is_hopping: bool,
+        wheels: &Vec<Wheel>,
+    ) {
         if !is_hopping {
             if ground {
                 self.floor_nor = wheels
@@ -98,7 +104,9 @@ impl Physics {
             }
         }
 
-        self.stabilization_factor = if is_hopping {
+        self.stabilization_factor = if is_landing {
+            0.1
+        } else if is_hopping {
             if self.stats.vehicle.kind.is_bike() {
                 0.22
             } else {
@@ -115,13 +123,15 @@ impl Physics {
         }
     }
 
-    pub fn update_dir(&mut self, hop_dir: Option<Vec3>) {
-        let next_dir = hop_dir
-            .unwrap_or_else(|| {
-                let right = self.rot0.rotate(Vec3::RIGHT);
-                right.cross(self.floor_nor).normalize()
-            })
-            .perp_in_plane(self.floor_nor, true);
+    pub fn update_dir(&mut self, drift: &Drift) {
+        let next_dir = drift.hop_dir().unwrap_or_else(|| {
+            let right = self.rot0.rotate(Vec3::RIGHT);
+            right.cross(self.floor_nor).normalize()
+        });
+        let angle = drift.outside_drift_angle().to_radians();
+        let mat = Mat33::from(Mat34::from_axis_angle(self.floor_nor, angle));
+        let next_dir = mat * next_dir;
+        let next_dir = next_dir.perp_in_plane(self.floor_nor, true);
         let next_dir_diff = next_dir - self.dir;
         if next_dir_diff.sq_norm() <= f32::EPSILON {
             self.dir = next_dir;
@@ -159,10 +169,12 @@ impl Physics {
         }
 
         self.last_speed1 = self.speed1;
-        if let Some(boost_acceleration) = boost.acceleration() {
+        if !ground {
+            if airtime > 5 {
+                self.speed1 *= 0.999;
+            }
+        } else if let Some(boost_acceleration) = boost.acceleration() {
             self.speed1 += boost_acceleration;
-        } else if airtime > 5 {
-            self.speed1 *= 0.999;
         } else if race.stage() == Stage::Race {
             let common = self.stats.common;
             let (ys, xs): (&[f32], &[f32]) = if is_drifting {

@@ -1,17 +1,28 @@
 use crate::geom::Vec3;
-use crate::player::{Boost, BoostKind, Physics, Wheelie};
+use crate::player::{Boost, BoostKind, Physics, Stats, Wheelie};
+use crate::wii::F32Ext;
 
 #[derive(Clone, Debug)]
 pub struct Drift {
+    base_speed: f32,
+    manual_drift_tightness: f32,
+    outside_drift_target_angle: f32,
+    outside_drift_dec: f32,
     mt_duration: u16,
     state: State,
+    outside_drift_angle: Option<f32>,
 }
 
 impl Drift {
-    pub fn new(mt_duration: u16) -> Drift {
+    pub fn new(stats: &Stats) -> Drift {
         Drift {
-            mt_duration,
+            base_speed: stats.common.base_speed,
+            manual_drift_tightness: stats.common.manual_drift_tightness,
+            outside_drift_target_angle: stats.common.outside_drift_target_angle,
+            outside_drift_dec: stats.common.outside_drift_dec,
+            mt_duration: stats.common.mt_duration as u16,
             state: State::Idle,
+            outside_drift_angle: (!stats.vehicle.kind.is_inside_drift()).then(|| 0.0),
         }
     }
 
@@ -50,6 +61,20 @@ impl Drift {
         }
     }
 
+    pub fn outside_drift_turn_bonus(&self) -> f32 {
+        match self.state {
+            State::Drift {
+                outside_drift_turn_bonus: Some(outside_drift_turn_bonus),
+                ..
+            } => outside_drift_turn_bonus,
+            _ => 0.0,
+        }
+    }
+
+    pub fn outside_drift_angle(&self) -> f32 {
+        self.outside_drift_angle.unwrap_or(0.0)
+    }
+
     pub fn update(
         &mut self,
         drift_input: bool,
@@ -71,6 +96,7 @@ impl Drift {
                 self.state = State::Hop {
                     frame: 0,
                     dir: physics.rot0.rotate(Vec3::FRONT),
+                    up: physics.rot0.rotate(Vec3::UP),
                     stick_x: None,
                     pos_y: 0.0,
                     vel_y: 10.0,
@@ -78,6 +104,8 @@ impl Drift {
             }
             State::Hop {
                 frame,
+                dir: hop_dir,
+                up: hop_up,
                 stick_x: hop_stick_x,
                 ..
             } => {
@@ -89,8 +117,29 @@ impl Drift {
 
                 if *frame >= 3 && ground {
                     if let Some(hop_stick_x) = hop_stick_x {
+                        let outside_drift_turn_bonus = match &mut self.outside_drift_angle {
+                            Some(angle) => {
+                                let front = physics.rot0.rotate(Vec3::FRONT);
+                                let rej = front.rej_unit(*hop_up);
+                                let sq_norm = rej.sq_norm();
+                                if sq_norm > f32::EPSILON {
+                                    let rej = rej.normalize();
+                                    let cross = hop_dir.cross(rej);
+                                    let norm = cross.sq_norm().wii_sqrt();
+                                    let dot = hop_dir.dot(rej);
+                                    let angle_diff = norm.wii_atan2(dot).to_degrees();
+                                    let angle_diff = angle_diff * *hop_stick_x;
+                                    *angle = (*angle + angle_diff).clamp(-60.0, 60.0)
+                                }
+
+                                let speed_ratio = (physics.speed1 / self.base_speed).min(1.0);
+                                Some(speed_ratio * self.manual_drift_tightness * 0.5)
+                            }
+                            None => None,
+                        };
                         self.state = State::Drift {
                             stick_x: *hop_stick_x,
+                            outside_drift_turn_bonus,
                             mt_charge: 0,
                         };
                     }
@@ -99,21 +148,47 @@ impl Drift {
             _ => (),
         }
 
-        if let State::Drift {
-            stick_x: drift_stick_x,
-            mt_charge,
-        } = &mut self.state
-        {
-            if drift_input {
-                let mt_charge_inc = if stick_x * *drift_stick_x > 0.4 { 5 } else { 2 };
-                *mt_charge = (*mt_charge + mt_charge_inc).min(270);
-            } else {
-                if *mt_charge >= 270 {
-                    boost.activate(BoostKind::Weak, self.mt_duration);
+        match &mut self.state {
+            State::Idle => {
+                if let Some(angle) = &mut self.outside_drift_angle {
+                    let dec = self.outside_drift_dec;
+                    *angle = angle.signum() * (angle.abs() - dec).max(0.0);
                 }
-
-                self.state = State::Idle;
             }
+            State::Drift {
+                stick_x: drift_stick_x,
+                outside_drift_turn_bonus,
+                mt_charge,
+            } => {
+                if drift_input {
+                    if let Some(turn_bonus) = outside_drift_turn_bonus {
+                        *turn_bonus *= 0.99;
+                    }
+
+                    if let Some(angle) = &mut self.outside_drift_angle {
+                        let last_angle = *angle * *drift_stick_x;
+                        let target_angle = self.outside_drift_target_angle;
+                        let next_angle = if last_angle < target_angle {
+                            (last_angle + 150.0 * self.manual_drift_tightness).min(target_angle)
+                        } else if last_angle > target_angle {
+                            (last_angle - 2.0).max(target_angle)
+                        } else {
+                            last_angle
+                        };
+                        *angle = next_angle * *drift_stick_x;
+                    }
+
+                    let mt_charge_inc = if stick_x * *drift_stick_x > 0.4 { 5 } else { 2 };
+                    *mt_charge = (*mt_charge + mt_charge_inc).min(270);
+                } else {
+                    if *mt_charge >= 270 {
+                        boost.activate(BoostKind::Weak, self.mt_duration);
+                    }
+
+                    self.state = State::Idle;
+                }
+            }
+            _ => (),
         }
     }
 
@@ -140,12 +215,14 @@ enum State {
     Hop {
         frame: u8,
         dir: Vec3,
+        up: Vec3,
         stick_x: Option<f32>,
         pos_y: f32,
         vel_y: f32,
     },
     Drift {
         stick_x: f32,
+        outside_drift_turn_bonus: Option<f32>,
         mt_charge: u16,
     },
 }

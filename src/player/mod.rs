@@ -69,7 +69,7 @@ impl Player {
 
         let stats = vehicle_stats.merge_with(*character_stats);
 
-        let drift = Drift::new(stats.common.mt_duration as u16);
+        let drift = Drift::new(&stats);
 
         let turn = Turn::new(&stats.common);
 
@@ -129,11 +129,12 @@ impl Player {
         self.physics.rot_vec2 = Vec3::ZERO;
 
         let ground = self.wheels.iter().any(|wheel| wheel.floor_nor.is_some());
-        if ground {
-            self.airtime = 0;
+        let (is_landing, airtime) = if ground {
+            (self.airtime != 0, 0)
         } else {
-            self.airtime += 1;
-        }
+            (false, self.airtime + 1)
+        };
+        self.airtime = airtime;
 
         if race.stage() == Stage::Countdown {
             self.start_boost.update(self.rkg.accelerate(race.frame()));
@@ -141,9 +142,9 @@ impl Player {
             self.boost.activate(BoostKind::Weak, self.start_boost.boost_frames());
         }
 
-        self.physics.update_floor_nor(self.drift.is_hopping(), &self.wheels, ground);
+        self.physics.update_floor_nor(ground, is_landing, self.drift.is_hopping(), &self.wheels);
 
-        self.physics.update_dir(self.drift.hop_dir());
+        self.physics.update_dir(&self.drift);
 
         let frame_idx = race.frame();
         let stick_x = self.rkg.stick_x(frame_idx);
