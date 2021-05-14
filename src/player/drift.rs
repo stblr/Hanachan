@@ -4,6 +4,7 @@ use crate::wii::F32Ext;
 
 #[derive(Clone, Debug)]
 pub struct Drift {
+    is_bike: bool,
     base_speed: f32,
     manual_drift_tightness: f32,
     outside_drift_target_angle: f32,
@@ -16,6 +17,7 @@ pub struct Drift {
 impl Drift {
     pub fn new(stats: &Stats) -> Drift {
         Drift {
+            is_bike: stats.vehicle.kind.is_bike(),
             base_speed: stats.common.base_speed,
             manual_drift_tightness: stats.common.manual_drift_tightness,
             outside_drift_target_angle: stats.common.outside_drift_target_angle,
@@ -141,6 +143,7 @@ impl Drift {
                             stick_x: *hop_stick_x,
                             outside_drift_turn_bonus,
                             mt_charge: 0,
+                            smt_charge: (!self.is_bike).then(|| 0),
                         };
                     }
                 }
@@ -159,6 +162,7 @@ impl Drift {
                 stick_x: drift_stick_x,
                 outside_drift_turn_bonus,
                 mt_charge,
+                smt_charge,
             } => {
                 if drift_input {
                     if let Some(turn_bonus) = outside_drift_turn_bonus {
@@ -179,10 +183,21 @@ impl Drift {
                     }
 
                     let mt_charge_inc = if stick_x * *drift_stick_x > 0.4 { 5 } else { 2 };
-                    *mt_charge = (*mt_charge + mt_charge_inc).min(270);
+                    *mt_charge = (*mt_charge + mt_charge_inc).min(271);
+                    if let Some(smt_charge) = smt_charge {
+                        if *mt_charge >= 271 {
+                            *smt_charge = (*smt_charge + mt_charge_inc).min(301);
+                        }
+                    }
                 } else {
-                    if *mt_charge >= 270 {
-                        boost.activate(BoostKind::Weak, self.mt_duration);
+                    match smt_charge {
+                        Some(smt_charge) if *smt_charge >= 301 => {
+                            boost.activate(BoostKind::Weak, 3 * self.mt_duration);
+                        }
+                        _ if *mt_charge >= 271 => {
+                            boost.activate(BoostKind::Weak, self.mt_duration);
+                        }
+                        _ => (),
                     }
 
                     self.state = State::Idle;
@@ -224,5 +239,6 @@ enum State {
         stick_x: f32,
         outside_drift_turn_bonus: Option<f32>,
         mt_charge: u16,
+        smt_charge: Option<u16>,
     },
 }
