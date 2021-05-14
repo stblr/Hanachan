@@ -9,7 +9,7 @@ At the moment, it is possible to replay the rMC3 WR for 1518 frames (until the e
 ## May 2021 roadmap
 
 - [ ] More vehicles
-  - [ ] Karts
+  - [x] Karts
   - [ ] Outside-drifting bikes
   - [ ] Quacker
   - [ ] Blue Falcon
