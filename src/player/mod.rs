@@ -73,7 +73,8 @@ impl Player {
 
         let turn = Turn::new(&stats.common);
 
-        let bike = stats.vehicle.kind.is_bike().then(|| Bike::new());
+        let is_inside_drift = stats.vehicle.kind.is_inside_drift();
+        let bike = stats.vehicle.kind.is_bike().then(|| Bike::new(is_inside_drift));
 
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
         let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
@@ -144,7 +145,7 @@ impl Player {
 
         self.physics.update_floor_nor(ground, is_landing, self.drift.is_hopping(), &self.wheels);
 
-        self.physics.update_dir(&self.drift);
+        self.physics.update_dir(self.airtime, &self.drift);
 
         let frame_idx = race.frame();
         let stick_x = self.rkg.stick_x(frame_idx);

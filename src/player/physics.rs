@@ -105,9 +105,11 @@ impl Physics {
         }
 
         self.stabilization_factor = if is_landing {
+            self.dir_diff = self.dir.perp_in_plane(self.floor_nor, true);
+            self.dir_diff = self.dir_diff.proj_unit(self.dir_diff);
             0.1
         } else if is_hopping {
-            if self.stats.vehicle.kind.is_bike() {
+            if self.stats.vehicle.kind.is_inside_drift() {
                 0.22
             } else {
                 0.5
@@ -123,7 +125,11 @@ impl Physics {
         }
     }
 
-    pub fn update_dir(&mut self, drift: &Drift) {
+    pub fn update_dir(&mut self, airtime: u32, drift: &Drift) {
+        if airtime > 5 {
+            return;
+        }
+        
         let next_dir = drift.hop_dir().unwrap_or_else(|| {
             let right = self.rot0.rotate(Vec3::RIGHT);
             right.cross(self.floor_nor).normalize()

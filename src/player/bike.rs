@@ -7,9 +7,9 @@ pub struct Bike {
 }
 
 impl Bike {
-    pub fn new() -> Bike {
+    pub fn new(is_inside_drift: bool) -> Bike {
         Bike {
-            lean: Lean::new(),
+            lean: Lean::new(is_inside_drift),
             wheelie: Wheelie::new(),
         }
     }
