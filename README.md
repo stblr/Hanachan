@@ -10,7 +10,7 @@ At the moment, it is possible to replay the rMC3 WR for 1518 frames (until the e
 
 - [ ] More vehicles
   - [x] Karts
-  - [ ] Outside-drifting bikes
+  - [x] Outside-drifting bikes
   - [ ] Quacker
   - [ ] Blue Falcon
 - [ ] RKRD improvements
