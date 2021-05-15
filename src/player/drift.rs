@@ -11,11 +11,17 @@ pub struct Drift {
     outside_drift_dec: f32,
     mt_duration: u16,
     state: State,
-    outside_drift_angle: Option<f32>,
+    outside_drift: Option<OutsideDrift>,
 }
 
 impl Drift {
     pub fn new(stats: &Stats) -> Drift {
+        let outside_drift = if stats.vehicle.kind.is_inside_drift() {
+            None
+        } else {
+            Some(OutsideDrift::new())
+        };
+
         Drift {
             is_bike: stats.vehicle.kind.is_bike(),
             base_speed: stats.common.base_speed,
@@ -24,7 +30,7 @@ impl Drift {
             outside_drift_dec: stats.common.outside_drift_dec,
             mt_duration: stats.common.mt_duration as u16,
             state: State::Idle,
-            outside_drift_angle: (!stats.vehicle.kind.is_inside_drift()).then(|| 0.0),
+            outside_drift,
         }
     }
 
@@ -74,18 +80,20 @@ impl Drift {
     }
 
     pub fn outside_drift_angle(&self) -> f32 {
-        self.outside_drift_angle.unwrap_or(0.0)
+        self.outside_drift.as_ref().map(|outside_drift| outside_drift.angle).unwrap_or(0.0)
     }
 
     pub fn update(
         &mut self,
         drift_input: bool,
         stick_x: f32,
+        airtime: u32,
         boost: &mut Boost,
         wheelie: Option<&mut Wheelie>,
         physics: &mut Physics,
-        ground: bool,
     ) {
+        let ground = airtime == 0;
+
         match &mut self.state {
             State::Idle if drift_input => {
                 if let Some(wheelie) = wheelie {
@@ -119,8 +127,8 @@ impl Drift {
 
                 if *frame >= 3 && ground {
                     if let Some(hop_stick_x) = hop_stick_x {
-                        let outside_drift_turn_bonus = match &mut self.outside_drift_angle {
-                            Some(angle) => {
+                        let outside_drift_turn_bonus = match &mut self.outside_drift {
+                            Some(outside_drift) => {
                                 let front = physics.rot0.rotate(Vec3::FRONT);
                                 let rej = front.rej_unit(*hop_up);
                                 let sq_norm = rej.sq_norm();
@@ -131,6 +139,7 @@ impl Drift {
                                     let dot = hop_dir.dot(rej);
                                     let angle_diff = norm.wii_atan2(dot).to_degrees();
                                     let angle_diff = angle_diff * *hop_stick_x;
+                                    let angle = &mut outside_drift.angle;
                                     *angle = (*angle + angle_diff).clamp(-60.0, 60.0)
                                 }
 
@@ -148,13 +157,35 @@ impl Drift {
                     }
                 }
             }
+            State::Drift { .. } if !ground => {
+                if let Some(outside_drift) = &mut self.outside_drift {
+                    let up = physics.rot0.rotate(Vec3::UP);
+                    let rej = outside_drift.dir.rej_unit(up);
+                    let sq_norm = rej.sq_norm();
+                    if sq_norm > f32::EPSILON {
+                        let rej = rej.normalize();
+                        let dir = physics.rot0.rotate(Vec3::FRONT);
+                        let cross = rej.cross(dir);
+                        let norm = cross.sq_norm().wii_sqrt();
+                        let dot = rej.dot(dir);
+                        let angle_diff = norm.wii_atan2(dot).to_degrees();
+                        let sign = (dir.x * (dir.z - rej.z) - dir.z * (dir.x - rej.x)).signum();
+                        outside_drift.angle += sign * angle_diff;
+                    }
+                }
+            }
             _ => (),
+        }
+
+        if let Some(outside_drift) = &mut self.outside_drift {
+            outside_drift.dir = physics.rot0.rotate(Vec3::FRONT);
         }
 
         match &mut self.state {
             State::Idle => {
-                if let Some(angle) = &mut self.outside_drift_angle {
+                if let Some(outside_drift) = &mut self.outside_drift {
                     let dec = self.outside_drift_dec;
+                    let angle = &mut outside_drift.angle;
                     *angle = angle.signum() * (angle.abs() - dec).max(0.0);
                 }
             }
@@ -169,24 +200,26 @@ impl Drift {
                         *turn_bonus *= 0.99;
                     }
 
-                    if let Some(angle) = &mut self.outside_drift_angle {
-                        let last_angle = *angle * *drift_stick_x;
-                        let target_angle = self.outside_drift_target_angle;
-                        let next_angle = if last_angle < target_angle {
-                            (last_angle + 150.0 * self.manual_drift_tightness).min(target_angle)
-                        } else if last_angle > target_angle {
-                            (last_angle - 2.0).max(target_angle)
-                        } else {
-                            last_angle
-                        };
-                        *angle = next_angle * *drift_stick_x;
-                    }
+                    if airtime <= 5 {
+                        if let Some(outside_drift) = &mut self.outside_drift {
+                            let last_angle = outside_drift.angle * *drift_stick_x;
+                            let target_angle = self.outside_drift_target_angle;
+                            let next_angle = if last_angle < target_angle {
+                                (last_angle + 150.0 * self.manual_drift_tightness).min(target_angle)
+                            } else if last_angle > target_angle {
+                                (last_angle - 2.0).max(target_angle)
+                            } else {
+                                last_angle
+                            };
+                            outside_drift.angle = next_angle * *drift_stick_x;
+                        }
 
-                    let mt_charge_inc = if stick_x * *drift_stick_x > 0.4 { 5 } else { 2 };
-                    *mt_charge = (*mt_charge + mt_charge_inc).min(271);
-                    if let Some(smt_charge) = smt_charge {
-                        if *mt_charge >= 271 {
-                            *smt_charge = (*smt_charge + mt_charge_inc).min(301);
+                        let mt_charge_inc = if stick_x * *drift_stick_x > 0.4 { 5 } else { 2 };
+                        *mt_charge = (*mt_charge + mt_charge_inc).min(271);
+                        if let Some(smt_charge) = smt_charge {
+                            if *mt_charge >= 271 {
+                                *smt_charge = (*smt_charge + mt_charge_inc).min(301);
+                            }
                         }
                     }
                 } else {
@@ -241,4 +274,19 @@ enum State {
         mt_charge: u16,
         smt_charge: Option<u16>,
     },
+}
+
+#[derive(Clone, Debug)]
+struct OutsideDrift {
+    angle: f32,
+    dir: Vec3,
+}
+
+impl OutsideDrift {
+    fn new() -> OutsideDrift {
+        OutsideDrift {
+            angle: 0.0,
+            dir: Vec3::BACK,
+        }
+    }
 }

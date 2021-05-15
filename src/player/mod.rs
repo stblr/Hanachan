@@ -153,7 +153,7 @@ impl Player {
 
         let drift = self.rkg.drift(frame_idx);
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
-        self.drift.update(drift, stick_x, &mut self.boost, wheelie, &mut self.physics, ground);
+        self.drift.update(drift, stick_x, self.airtime, &mut self.boost, wheelie, &mut self.physics);
 
         if let Some(bike) = &mut self.bike {
             let base_speed = self.stats.common.base_speed;
