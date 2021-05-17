@@ -7,7 +7,6 @@ use crate::race::{Race, Stage};
 
 #[derive(Clone, Debug)]
 pub struct Physics {
-    stats: Stats,
     pub inv_inertia_tensor: Mat34,
     pub rot_factor: f32,
     pub mat: Mat34,
@@ -32,7 +31,7 @@ pub struct Physics {
 }
 
 impl Physics {
-    pub fn new(stats: Stats, bsp: &Bsp, ktpt_pos: Vec3) -> Physics {
+    pub fn new(bsp: &Bsp, ktpt_pos: Vec3) -> Physics {
         let masses = [1.0 / 12.0, 1.0];
         let inertia_tensor = masses
             .iter()
@@ -57,7 +56,6 @@ impl Physics {
         let pos = ktpt_pos + Vec3::new(0.0, bsp.initial_pos_y, 0.0);
 
         Physics {
-            stats,
             inv_inertia_tensor,
             rot_factor: bsp.rot_factor,
             mat: Mat34::from_quat_and_pos(Quat::BACK, pos),
@@ -88,6 +86,7 @@ impl Physics {
 
     pub fn update_floor_nor(
         &mut self,
+        is_inside_drift: bool,
         ground: bool,
         is_landing: bool,
         is_hopping: bool,
@@ -109,7 +108,7 @@ impl Physics {
             self.dir_diff = self.dir_diff.proj_unit(self.dir_diff);
             0.1
         } else if is_hopping {
-            if self.stats.vehicle.kind.is_inside_drift() {
+            if is_inside_drift {
                 0.22
             } else {
                 0.5
@@ -157,6 +156,7 @@ impl Physics {
 
     pub fn update_vel1(
         &mut self,
+        stats: &Stats,
         airtime: u32,
         is_drifting: bool,
         boost: &Boost,
@@ -170,7 +170,7 @@ impl Physics {
 
         let ground = airtime == 0;
         if !boost.is_boosting() && ground && !is_drifting {
-            let t = self.stats.common.handling_speed_multiplier;
+            let t = stats.common.handling_speed_multiplier;
             self.speed1 *= t + (1.0 - t) * (1.0 - raw_turn.abs());
         }
 
@@ -182,16 +182,15 @@ impl Physics {
         } else if let Some(boost_acceleration) = boost.acceleration() {
             self.speed1 += boost_acceleration;
         } else if race.stage() == Stage::Race {
-            let common = self.stats.common;
             let (ys, xs): (&[f32], &[f32]) = if is_drifting {
-                (&common.drift_acceleration_ys, &common.drift_acceleration_xs)
+                (&stats.common.drift_acceleration_ys, &stats.common.drift_acceleration_xs)
             } else {
-                (&common.acceleration_ys, &common.acceleration_xs)
+                (&stats.common.acceleration_ys, &stats.common.acceleration_xs)
             };
             self.speed1 += self.compute_acceleration(ys, xs);
         }
 
-        let base_speed = self.stats.common.base_speed;
+        let base_speed = stats.common.base_speed;
         let boost_factor = boost.factor();
         let wheelie_bonus = if is_wheelieing { 0.15 } else { 0.0 };
         let next_speed1_soft_limit = base_speed * (boost_factor + wheelie_bonus);
@@ -221,9 +220,7 @@ impl Physics {
         }
     }
 
-    pub fn update(&mut self, race: &Race) {
-        let is_bike = self.stats.vehicle.kind.is_bike();
-
+    pub fn update(&mut self, is_bike: bool, race: &Race) {
         if race.stage() != Stage::Race {
             if is_bike {
                 self.vel0 = self.vel0.rej_unit(self.floor_nor);

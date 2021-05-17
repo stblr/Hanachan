@@ -80,7 +80,7 @@ impl Player {
         let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
 
         let ktpt_pos = Vec3::new(-14720.0, 1000.0, -2954.655); // TODO load from Kmp
-        let physics = Physics::new(stats, bsp, ktpt_pos);
+        let physics = Physics::new(bsp, ktpt_pos);
 
         let vehicle_body = VehicleBody::new(bsp.hitboxes.clone());
 
@@ -143,7 +143,13 @@ impl Player {
             self.boost.activate(BoostKind::Weak, self.start_boost.boost_frames());
         }
 
-        self.physics.update_floor_nor(ground, is_landing, self.drift.is_hopping(), &self.wheels);
+        self.physics.update_floor_nor(
+            self.stats.vehicle.kind.is_inside_drift(),
+            ground,
+            is_landing,
+            self.drift.is_hopping(),
+            &self.wheels,
+        );
 
         self.physics.update_dir(self.airtime, &self.drift);
 
@@ -170,6 +176,7 @@ impl Player {
             .map(|bike| bike.wheelie.is_wheelieing())
             .unwrap_or(false);
         self.physics.update_vel1(
+            &self.stats,
             self.airtime,
             self.drift.is_drifting(),
             &self.boost,
@@ -216,7 +223,7 @@ impl Player {
             self.physics.rot_vec2.x += self.diving_rot;
         }
 
-        self.physics.update(race);
+        self.physics.update(self.stats.vehicle.kind.is_bike(), race);
 
         self.vehicle_body.update(&mut self.physics);
 
