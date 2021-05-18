@@ -14,7 +14,8 @@ At the moment, it is possible to replay the rMC3 WR for 1518 frames (until the e
   - [ ] Quacker
   - [ ] Blue Falcon
 - [ ] RKRD improvements
-  - [ ] Rewrite as a GCT
+  - [x] Rewrite as a GCT
+  - [ ] Support regions other than PAL
   - [ ] Automation options
 - [ ] KMP features
   - [ ] KTPT
