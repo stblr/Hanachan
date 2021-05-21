@@ -3,6 +3,8 @@ use crate::player::Physics;
 
 #[derive(Clone, Debug)]
 pub struct Wheelie {
+    is_wheelieing: bool,
+    cooldown: u16,
     frame: u16,
     rot: f32,
     rot_dec: f32,
@@ -11,6 +13,8 @@ pub struct Wheelie {
 impl Wheelie {
     pub fn new() -> Wheelie {
         Wheelie {
+            is_wheelieing: false,
+            cooldown: 0,
             frame: 0,
             rot: 0.0,
             rot_dec: 0.0,
@@ -18,7 +22,7 @@ impl Wheelie {
     }
 
     pub fn is_wheelieing(&self) -> bool {
-        self.frame > 0
+        self.is_wheelieing
     }
 
     pub fn rot(&self) -> f32 {
@@ -32,7 +36,11 @@ impl Wheelie {
         is_drifting: bool,
         physics: &mut Physics,
     ) {
-        if self.frame > 0 || (trick_is_up && !is_drifting) {
+        self.try_start(trick_is_up, is_drifting);
+
+        self.cooldown = self.cooldown.saturating_sub(1);
+
+        if self.is_wheelieing {
             self.frame += 1;
 
             if self.should_cancel(base_speed, physics) {
@@ -52,6 +60,13 @@ impl Wheelie {
         }
     }
 
+    fn try_start(&mut self, trick_is_up: bool, is_drifting: bool) {
+        if !self.is_wheelieing && self.cooldown == 0 && trick_is_up && !is_drifting {
+            self.is_wheelieing = true;
+            self.cooldown = 20;
+        }
+    }
+
     fn should_cancel(&self, base_speed: f32, physics: &Physics) -> bool {
         if self.frame < 15 {
             false
@@ -64,6 +79,7 @@ impl Wheelie {
     }
 
     pub fn cancel(&mut self) {
+        self.is_wheelieing = false;
         self.frame = 0;
         self.rot_dec = 0.0;
     }
