@@ -4,12 +4,6 @@ use crate::wii::F32Ext;
 
 #[derive(Clone, Debug)]
 pub struct Drift {
-    is_bike: bool,
-    base_speed: f32,
-    manual_drift_tightness: f32,
-    outside_drift_target_angle: f32,
-    outside_drift_dec: f32,
-    mt_duration: u16,
     state: State,
     outside_drift: Option<OutsideDrift>,
 }
@@ -23,12 +17,6 @@ impl Drift {
         };
 
         Drift {
-            is_bike: stats.vehicle.drift_kind.is_bike(),
-            base_speed: stats.common.base_speed,
-            manual_drift_tightness: stats.common.manual_drift_tightness,
-            outside_drift_target_angle: stats.common.outside_drift_target_angle,
-            outside_drift_dec: stats.common.outside_drift_dec,
-            mt_duration: stats.common.mt_duration as u16,
             state: State::Idle,
             outside_drift,
         }
@@ -86,6 +74,7 @@ impl Drift {
 
     pub fn update(
         &mut self,
+        stats: &Stats,
         drift_input: bool,
         stick_x: f32,
         airtime: u32,
@@ -114,11 +103,12 @@ impl Drift {
 
                     if drift_input {
                         let outside_drift_turn_bonus = self.outside_drift.as_ref().map(|_| {
-                            let speed_ratio = (physics.speed1 / self.base_speed).min(1.0);
-                            speed_ratio * self.manual_drift_tightness * 0.5
+                            let speed_ratio = (physics.speed1 / stats.common.base_speed).min(1.0);
+                            speed_ratio * stats.common.manual_drift_tightness * 0.5
                         });
+                        let is_bike = stats.vehicle.drift_kind.is_bike();
                         let drift_state =
-                            DriftState::new(hop_stick_x, outside_drift_turn_bonus, self.is_bike);
+                            DriftState::new(hop_stick_x, outside_drift_turn_bonus, is_bike);
                         self.state = State::Drift(drift_state);
                     } else {
                         self.state = State::Idle;
@@ -140,7 +130,7 @@ impl Drift {
         match &mut self.state {
             State::Idle => {
                 if let Some(outside_drift) = &mut self.outside_drift {
-                    outside_drift.decrease_angle(self.outside_drift_dec);
+                    outside_drift.decrease_angle(stats.common.outside_drift_dec);
                 }
             }
             State::Drift(drift) => {
@@ -150,8 +140,8 @@ impl Drift {
                     if airtime <= 5 {
                         if let Some(outside_drift) = &mut self.outside_drift {
                             outside_drift.adjust_angle(
-                                self.manual_drift_tightness,
-                                self.outside_drift_target_angle,
+                                stats.common.manual_drift_tightness,
+                                stats.common.outside_drift_target_angle,
                                 drift.stick_x,
                             );
                         }
@@ -159,7 +149,7 @@ impl Drift {
                         drift.update_mt_charge(stick_x);
                     }
                 } else {
-                    drift.release_mt(self.mt_duration, boost);
+                    drift.release_mt(stats.common.mt_duration as u16, boost);
 
                     self.state = State::Idle;
                 }

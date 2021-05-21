@@ -2,21 +2,13 @@ use crate::player::{CommonStats, Drift, Physics};
 
 #[derive(Clone, Debug)]
 pub struct Turn {
-    manual_handling_tightness: f32,
-    handling_reactivity: f32,
-    manual_drift_tightness: f32,
-    drift_reactivity: f32,
     raw: f32,
     drift: f32,
 }
 
 impl Turn {
-    pub fn new(stats: &CommonStats) -> Turn {
+    pub fn new() -> Turn {
         Turn {
-            manual_handling_tightness: stats.manual_handling_tightness,
-            handling_reactivity: stats.handling_reactivity,
-            manual_drift_tightness: stats.manual_drift_tightness,
-            drift_reactivity: stats.drift_reactivity,
             raw: 0.0,
             drift: 0.0,
         }
@@ -26,12 +18,12 @@ impl Turn {
         self.raw
     }
 
-    pub fn update(&mut self, stick_x: f32, drift: &Drift) {
+    pub fn update(&mut self, stats: &CommonStats, stick_x: f32, drift: &Drift) {
         let stick_x = drift.hop_stick_x().unwrap_or(stick_x);
         let reactivity = if drift.is_drifting() {
-            self.drift_reactivity
+            stats.drift_reactivity
         } else {
-            self.handling_reactivity
+            stats.handling_reactivity
         };
         self.raw = (1.0 - reactivity) * self.raw + reactivity * -stick_x;
 
@@ -43,11 +35,17 @@ impl Turn {
         };
     }
 
-    pub fn update_rot(&self, drift: &Drift, is_wheelieing: bool, physics: &mut Physics) {
+    pub fn update_rot(
+        &self,
+        stats: &CommonStats,
+        drift: &Drift,
+        is_wheelieing: bool,
+        physics: &mut Physics,
+    ) {
         physics.rot_vec2.y += if drift.is_drifting() {
-            self.drift * (self.manual_drift_tightness + drift.outside_drift_turn_bonus())
+            self.drift * (stats.manual_drift_tightness + drift.outside_drift_turn_bonus())
         } else {
-            let rot = self.drift * self.manual_handling_tightness;
+            let rot = self.drift * stats.manual_handling_tightness;
 
             let hop_factor = if drift.is_hopping() { 1.4 } else { 1.0 };
             let rot = rot * hop_factor;

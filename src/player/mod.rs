@@ -71,7 +71,7 @@ impl Player {
 
         let drift = Drift::new(&stats);
 
-        let turn = Turn::new(&stats.common);
+        let turn = Turn::new();
 
         let drift_kind = stats.vehicle.drift_kind;
         let bike = drift_kind.is_bike().then(|| Bike::new(drift_kind.is_inside()));
@@ -156,11 +156,19 @@ impl Player {
 
         let frame_idx = race.frame();
         let stick_x = self.rkg.stick_x(frame_idx);
-        self.turn.update(stick_x, &self.drift);
+        self.turn.update(&self.stats.common, stick_x, &self.drift);
 
         let drift = self.rkg.drift(frame_idx);
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
-        self.drift.update(drift, stick_x, self.airtime, &mut self.boost, wheelie, &mut self.physics);
+        self.drift.update(
+            &self.stats,
+            drift,
+            stick_x,
+            self.airtime,
+            &mut self.boost,
+            wheelie,
+            &mut self.physics,
+        );
 
         if let Some(bike) = &mut self.bike {
             let base_speed = self.stats.common.base_speed;
@@ -210,7 +218,7 @@ impl Player {
             self.physics.rot_vec0.z += self.stats.common.tilt_factor * norm * self.turn.raw().abs();
         }
 
-        self.turn.update_rot(&self.drift, is_wheelieing, &mut self.physics);
+        self.turn.update_rot(&self.stats.common, &self.drift, is_wheelieing, &mut self.physics);
 
         self.diving_rot *= 0.96;
         if !ground {
