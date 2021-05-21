@@ -73,8 +73,8 @@ impl Player {
 
         let turn = Turn::new(&stats.common);
 
-        let is_inside_drift = stats.vehicle.kind.is_inside_drift();
-        let bike = stats.vehicle.kind.is_bike().then(|| Bike::new(is_inside_drift));
+        let drift_kind = stats.vehicle.drift_kind;
+        let bike = drift_kind.is_bike().then(|| Bike::new(drift_kind.is_inside()));
 
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
         let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
@@ -89,9 +89,10 @@ impl Player {
             .content()
             .as_file()?
             .as_bike_parts_disp_param()?;
-        let handle = bike_parts_disp_param.vehicle(*params.vehicle());
+        let has_handle = stats.vehicle.has_handle;
+        let handle = bike_parts_disp_param.vehicle(*params.vehicle()).filter(|_| has_handle);
 
-        let wheel_count = stats.vehicle.kind.wheel_count();
+        let wheel_count = stats.vehicle.wheel_count;
         let wheels = (0..4)
             .filter(|i| wheel_count != 2 || i % 2 == 0)
             .filter(|i| wheel_count != 3 || *i != 0)
@@ -144,7 +145,7 @@ impl Player {
         }
 
         self.physics.update_floor_nor(
-            self.stats.vehicle.kind.is_inside_drift(),
+            self.stats.vehicle.drift_kind.is_inside(),
             ground,
             is_landing,
             self.drift.is_hopping(),
@@ -223,7 +224,7 @@ impl Player {
             self.physics.rot_vec2.x += self.diving_rot;
         }
 
-        self.physics.update(self.stats.vehicle.kind.is_bike(), race);
+        self.physics.update(self.stats.vehicle.drift_kind.is_bike(), race);
 
         self.vehicle_body.update(&mut self.physics);
 
@@ -254,7 +255,7 @@ impl Player {
         } else {
             let acceleration = (self.physics.speed1 - self.physics.last_speed1).clamp(-3.0, 3.0);
 
-            let is_bike = self.stats.vehicle.kind.is_bike();
+            let is_bike = self.stats.vehicle.drift_kind.is_bike();
             let vehicle_factor = if is_bike { 0.2 } else { 1.0 };
 
             let is_wheelieing = self

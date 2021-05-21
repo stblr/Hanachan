@@ -28,64 +28,64 @@ impl Parse for Stats {
 
 #[derive(Clone, Copy, Debug)]
 pub struct VehicleStats {
-    pub kind: VehicleKind,
+    pub wheel_count: u8,
+    pub has_handle: bool,
+    pub drift_kind: DriftKind,
 }
 
 impl Parse for VehicleStats {
     fn parse(input: &mut &[u8]) -> Result<VehicleStats, Error> {
-        let kind = input.take()?;
+        let (wheel_count, has_handle) = match input.take::<u32>()? {
+            0 => (4, false),
+            1 => (2, true),
+            2 => (2, false),
+            3 => (3, false),
+            _ => return Err(Error {}),
+        };
+
+        let drift_kind = input.take()?;
+
         input.skip(0x18c - 0x8)?;
 
-        Ok(VehicleStats { kind })
+        Ok(VehicleStats {
+            wheel_count,
+            has_handle,
+            drift_kind,
+        })
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum VehicleKind {
-    OutsideDriftingFourWheeledKart,
-    OutsideDriftingThreeWheeledKart,
-    OutsideDriftingBike,
-    InsideDriftingBike,
+pub enum DriftKind {
+    KartOutsideDrift,
+    BikeOutsideDrift,
+    BikeInsideDrift,
 }
 
-impl VehicleKind {
-    pub fn is_inside_drift(&self) -> bool {
-        match self {
-            VehicleKind::OutsideDriftingFourWheeledKart => false,
-            VehicleKind::OutsideDriftingThreeWheeledKart => false,
-            VehicleKind::OutsideDriftingBike => false,
-            VehicleKind::InsideDriftingBike => true,
-        }
-    }
-
+impl DriftKind {
     pub fn is_bike(&self) -> bool {
         match self {
-            VehicleKind::OutsideDriftingFourWheeledKart => false,
-            VehicleKind::OutsideDriftingThreeWheeledKart => false,
-            VehicleKind::OutsideDriftingBike => true,
-            VehicleKind::InsideDriftingBike => true,
+            DriftKind::KartOutsideDrift => false,
+            DriftKind::BikeOutsideDrift => true,
+            DriftKind::BikeInsideDrift => true,
         }
     }
 
-    pub fn wheel_count(&self) -> u8 {
+    pub fn is_inside(&self) -> bool {
         match self {
-            VehicleKind::OutsideDriftingFourWheeledKart => 4,
-            VehicleKind::OutsideDriftingThreeWheeledKart => 3,
-            VehicleKind::OutsideDriftingBike => 2,
-            VehicleKind::InsideDriftingBike => 2,
+            DriftKind::KartOutsideDrift => false,
+            DriftKind::BikeOutsideDrift => false,
+            DriftKind::BikeInsideDrift => true,
         }
     }
 }
 
-impl Parse for VehicleKind {
-    fn parse(input: &mut &[u8]) -> Result<VehicleKind, Error> {
-        match (input.take::<u32>()?, input.take::<u32>()?) {
-            (0, 0) => Ok(VehicleKind::OutsideDriftingFourWheeledKart),
-            (3, 0) => Ok(VehicleKind::OutsideDriftingThreeWheeledKart),
-            (1, 1) => Ok(VehicleKind::OutsideDriftingBike),
-            (2, 1) => Ok(VehicleKind::OutsideDriftingBike),
-            (1, 2) => Ok(VehicleKind::InsideDriftingBike),
-            (2, 2) => Ok(VehicleKind::InsideDriftingBike),
+impl Parse for DriftKind {
+    fn parse(input: &mut &[u8]) -> Result<DriftKind, Error> {
+        match input.take::<u32>()? {
+            0 => Ok(DriftKind::KartOutsideDrift),
+            1 => Ok(DriftKind::BikeOutsideDrift),
+            2 => Ok(DriftKind::BikeInsideDrift),
             _ => Err(Error {}),
         }
     }

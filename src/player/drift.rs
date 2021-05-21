@@ -16,14 +16,14 @@ pub struct Drift {
 
 impl Drift {
     pub fn new(stats: &Stats) -> Drift {
-        let outside_drift = if stats.vehicle.kind.is_inside_drift() {
+        let outside_drift = if stats.vehicle.drift_kind.is_inside() {
             None
         } else {
             Some(OutsideDrift::new())
         };
 
         Drift {
-            is_bike: stats.vehicle.kind.is_bike(),
+            is_bike: stats.vehicle.drift_kind.is_bike(),
             base_speed: stats.common.base_speed,
             manual_drift_tightness: stats.common.manual_drift_tightness,
             outside_drift_target_angle: stats.common.outside_drift_target_angle,
