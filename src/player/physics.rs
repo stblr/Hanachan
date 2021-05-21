@@ -255,6 +255,9 @@ impl Physics {
         if is_bike {
             self.rot_vec0.z = 0.0;
         }
+        self.rot_vec0.x = self.rot_vec0.x.clamp(-0.4, 0.4);
+        self.rot_vec0.y = self.rot_vec0.y.clamp(-0.4, 0.4);
+        self.rot_vec0.z = self.rot_vec0.z.clamp(-0.8, 0.8);
 
         let rot_vec = self.rot_factor * self.rot_vec0 + self.rot_vec2;
         if rot_vec.sq_norm() > f32::EPSILON {
