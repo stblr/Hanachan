@@ -112,13 +112,17 @@ impl Drift {
                         outside_drift.update_angle_on_drift_start(hop, hop_stick_x, physics.rot0);
                     }
 
-                    let outside_drift_turn_bonus = self.outside_drift.as_ref().map(|_| {
-                        let speed_ratio = (physics.speed1 / self.base_speed).min(1.0);
-                        speed_ratio * self.manual_drift_tightness * 0.5
-                    });
-                    let drift_state =
-                        DriftState::new(hop_stick_x, outside_drift_turn_bonus, self.is_bike);
-                    self.state = State::Drift(drift_state);
+                    if drift_input {
+                        let outside_drift_turn_bonus = self.outside_drift.as_ref().map(|_| {
+                            let speed_ratio = (physics.speed1 / self.base_speed).min(1.0);
+                            speed_ratio * self.manual_drift_tightness * 0.5
+                        });
+                        let drift_state =
+                            DriftState::new(hop_stick_x, outside_drift_turn_bonus, self.is_bike);
+                        self.state = State::Drift(drift_state);
+                    } else {
+                        self.state = State::Idle;
+                    }
                 }
             }
             State::Drift(_) if !ground => {
