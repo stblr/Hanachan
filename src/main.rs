@@ -8,7 +8,7 @@ use std::arch::x86_64;
 use std::env;
 use std::fmt::Debug;
 
-use crate::fs::{yaz, Rkrd, SliceRefExt};
+use crate::fs::{yaz, Rkrd, SliceRefExt, U8};
 use crate::player::Player;
 use crate::race::Race;
 
@@ -19,8 +19,8 @@ fn main() {
     }
 
     let args: Vec<String> = env::args().collect();
-    if args.len() != 4 {
-        eprintln!("Usage: hanachan <Common.szs> <ghost.rkg> <dump.rkrd>");
+    if args.len() != 5 {
+        eprintln!("Usage: hanachan <Common.szs> <track.szs> <ghost.rkg> <dump.rkrd>");
         return;
     }
 
@@ -46,7 +46,39 @@ fn main() {
         }
     };
 
-    let mut rkg: &[u8] = &match std::fs::read(&args[2]) {
+    let track = match std::fs::read(&args[2]) {
+        Ok(track) => track,
+        Err(_) => {
+            eprintln!("Couldn't open track file");
+            return;
+        }
+    };
+    let mut track: &[u8] = &match yaz::decompress(&track) {
+        Ok(track) => track,
+        Err(_) => {
+            eprintln!("Couldn't decompress track file");
+            return;
+        }
+    };
+    let track: U8 = match track.take() {
+        Ok(track) => track,
+        Err(_) => {
+            eprintln!("Couldn't parse track file");
+            return;
+        }
+    };
+    let kmp = match track
+        .get_node("./course.kmp")
+        .and_then(|node| node.content().as_file().and_then(|file| file.as_kmp()))
+    {
+        Some(kmp) => kmp,
+        None => {
+            eprintln!("Couldn't find kmp");
+            return;
+        }
+    };
+
+    let mut rkg: &[u8] = &match std::fs::read(&args[3]) {
         Ok(rkg) => rkg,
         Err(_) => {
             eprintln!("Couldn't open rkg");
@@ -61,7 +93,7 @@ fn main() {
         }
     };
 
-    let mut player = match Player::try_new(&common_szs, rkg) {
+    let mut player = match Player::try_new(&common_szs, kmp.ktpt.entries[0], rkg) {
         Some(player) => player,
         None => {
             eprintln!("Couldn't initialize player");
@@ -69,7 +101,7 @@ fn main() {
         }
     };
 
-    let mut rkrd: &[u8] = &match std::fs::read(&args[3]) {
+    let mut rkrd: &[u8] = &match std::fs::read(&args[4]) {
         Ok(rkrd) => rkrd,
         Err(_) => {
             eprintln!("Couldn't open rkrd");

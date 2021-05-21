@@ -1,3 +1,4 @@
+pub mod kmp;
 pub mod yaz;
 
 mod bike_parts_disp_param;
@@ -18,3 +19,4 @@ pub use rkrd::Rkrd;
 use bike_parts_disp_param::BikePartsDispParam;
 use driver_param::DriverParam;
 use kart_param::KartParam;
+use kmp::{Entry as KmpEntry, Kmp};

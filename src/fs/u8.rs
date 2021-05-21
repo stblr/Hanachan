@@ -1,7 +1,8 @@
 use std::iter;
 
 use crate::fs::{
-    BikePartsDispParam, Bsp, DriverParam, Error, KartParam, Parse, ResultExt, SliceExt, SliceRefExt,
+    BikePartsDispParam, Bsp, DriverParam, Error, KartParam, Kmp, Parse, ResultExt, SliceExt,
+    SliceRefExt,
 };
 
 #[derive(Clone, Debug)]
@@ -213,6 +214,7 @@ pub enum File {
     Bsp(Bsp),
     DriverParam(DriverParam),
     KartParam(KartParam),
+    Kmp(Kmp),
     Other,
 }
 
@@ -226,6 +228,8 @@ impl File {
             Ok(File::KartParam(input.take()?))
         } else if name.ends_with(".bsp") {
             Ok(File::Bsp(input.take()?))
+        } else if name.ends_with(".kmp") {
+            Ok(File::Kmp(input.take()?))
         } else {
             Ok(File::Other)
         }
@@ -255,6 +259,13 @@ impl File {
     pub fn as_kart_param(&self) -> Option<&KartParam> {
         match self {
             File::KartParam(kart_param) => Some(kart_param),
+            _ => None,
+        }
+    }
+
+    pub fn as_kmp(&self) -> Option<&Kmp> {
+        match self {
+            File::Kmp(kmp) => Some(kmp),
             _ => None,
         }
     }

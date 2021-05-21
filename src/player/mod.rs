@@ -16,7 +16,7 @@ pub use handle::Handle;
 pub use params::{Character, Params, Vehicle};
 pub use stats::{CommonStats, Stats};
 
-use crate::fs::{Rkg, RkgTrick, U8};
+use crate::fs::{kmp::Ktpt, Rkg, RkgTrick, U8};
 use crate::geom::{Mat33, Vec3};
 use crate::race::{Race, Stage};
 use crate::wii::F32Ext;
@@ -50,7 +50,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn try_new(common_szs: &U8, rkg: Rkg) -> Option<Player> {
+    pub fn try_new(common_szs: &U8, ktpt: Ktpt, rkg: Rkg) -> Option<Player> {
         let params = rkg.header().params();
 
         let kart_param = common_szs
@@ -79,8 +79,7 @@ impl Player {
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
         let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
 
-        let ktpt_pos = Vec3::new(-14720.0, 1000.0, -2954.655); // TODO load from Kmp
-        let physics = Physics::new(bsp, ktpt_pos);
+        let physics = Physics::new(bsp, ktpt.pos);
 
         let vehicle_body = VehicleBody::new(bsp.hitboxes.clone());
 
