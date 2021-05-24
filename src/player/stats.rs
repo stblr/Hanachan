@@ -110,6 +110,8 @@ pub struct CommonStats {
     pub outside_drift_target_angle: f32,
     pub outside_drift_dec: f32,
     pub mt_duration: u32,
+    pub kcl_speed_factors: [f32; 32],
+    pub kcl_rot_factors: [f32; 32],
 }
 
 impl Parse for CommonStats {
@@ -133,7 +135,15 @@ impl Parse for CommonStats {
         let outside_drift_target_angle = input.take()?;
         let outside_drift_dec = input.take()?;
         let mt_duration = input.take()?;
-        input.skip(0x18c - 0x70)?;
+        let mut kcl_speed_factors = [0.0; 32];
+        for kcl_speed_factor in &mut kcl_speed_factors {
+            *kcl_speed_factor = input.take()?;
+        }
+        let mut kcl_rot_factors = [0.0; 32];
+        for kcl_rot_factor in &mut kcl_rot_factors {
+            *kcl_rot_factor = input.take()?;
+        }
+        input.skip(0x18c - 0x170)?;
 
         Ok(CommonStats {
             weight,
@@ -153,6 +163,8 @@ impl Parse for CommonStats {
             outside_drift_target_angle,
             outside_drift_dec,
             mt_duration,
+            kcl_speed_factors,
+            kcl_rot_factors,
         })
     }
 }
@@ -181,6 +193,10 @@ impl Add for CommonStats {
         self.automatic_drift_tightness += other.automatic_drift_tightness;
         self.drift_reactivity += other.drift_reactivity;
         self.mt_duration += other.mt_duration;
+        for i in 0..32 {
+            self.kcl_speed_factors[i] += other.kcl_speed_factors[i];
+            self.kcl_rot_factors[i] += other.kcl_rot_factors[i];
+        }
         self
     }
 }

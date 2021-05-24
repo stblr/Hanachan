@@ -84,6 +84,7 @@ impl Tri {
             return Some(Collision {
                 dist: dist_in_plane,
                 nor: self.plane_nor,
+                flags: self.flags,
             });
         }
 
@@ -143,6 +144,7 @@ impl Tri {
         Some(Collision {
             dist,
             nor: self.plane_nor,
+            flags: self.flags,
         })
     }
 }
@@ -151,4 +153,5 @@ impl Tri {
 pub struct Collision {
     pub dist: f32,
     pub nor: Vec3,
+    pub flags: u16,
 }

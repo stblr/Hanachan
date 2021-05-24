@@ -1,6 +1,6 @@
 use crate::fs::{BspWheel, Kcl};
 use crate::geom::{Hitbox, Mat33, Mat34, Vec3};
-use crate::player::{Bike, Handle, Physics};
+use crate::player::{Bike, Collision, CommonStats, Handle, Physics};
 use crate::wii::F32Ext;
 
 #[derive(Clone, Debug)]
@@ -11,7 +11,7 @@ pub struct Wheel {
     pos: Vec3,
     last_pos_rel: Vec3,
     hitbox_radius: f32,
-    pub floor_nor: Option<Vec3>,
+    collision: Option<Collision>,
 }
 
 impl Wheel {
@@ -31,11 +31,21 @@ impl Wheel {
             pos,
             last_pos_rel,
             hitbox_radius,
-            floor_nor: None,
+            collision: None,
         }
     }
 
-    pub fn update(&mut self, bike: Option<&Bike>, physics: &mut Physics, kcl: &Kcl) {
+    pub fn collision(&self) -> Option<&Collision> {
+        self.collision.as_ref()
+    }
+
+    pub fn update(
+        &mut self,
+        stats: &CommonStats,
+        bike: Option<&Bike>,
+        physics: &mut Physics,
+        kcl: &Kcl,
+    ) {
         let bsp_wheel = self.bsp_wheel;
 
         self.axis_s = (self.axis_s + 5.0).min(bsp_wheel.slack_y);
@@ -85,8 +95,13 @@ impl Wheel {
         }
         self.last_pos_rel = pos_rel;
 
-        self.floor_nor = collision.map(|collision| collision.floor_nor);
-        if let Some(floor_nor) = self.floor_nor {
+        self.collision = collision.map(|collision| Collision {
+            floor_nor: collision.floor_nor,
+            speed_factor: stats.kcl_speed_factors[collision.closest_kind as usize],
+            rot_factor: stats.kcl_rot_factors[collision.closest_kind as usize],
+        });
+        if let Some(collision) = &self.collision {
+            let floor_nor = collision.floor_nor;
             let vel = self.pos - last_pos - physics.vel1;
             let dot = (vel + 10.0 * 1.3 * Vec3::DOWN).dot(floor_nor);
             if dot < 0.0 {

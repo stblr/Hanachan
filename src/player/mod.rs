@@ -1,5 +1,6 @@
 mod bike;
 mod boost;
+mod collision;
 mod drift;
 mod handle;
 mod lean;
@@ -16,6 +17,8 @@ pub use handle::Handle;
 pub use params::{Character, Params, Vehicle};
 pub use stats::{CommonStats, Stats};
 
+use std::ops::Add;
+
 use crate::fs::{kmp::Ktpt, Kcl, Rkg, RkgTrick, U8};
 use crate::geom::{Mat33, Vec3};
 use crate::race::{Race, Stage};
@@ -23,6 +26,7 @@ use crate::wii::F32Ext;
 
 use bike::Bike;
 use boost::{Boost, Kind as BoostKind};
+use collision::Collision;
 use drift::Drift;
 use lean::Lean;
 use physics::Physics;
@@ -41,6 +45,7 @@ pub struct Player {
     start_boost: StartBoost,
     drift: Drift,
     boost: Boost,
+    offroad_invicibility: u16,
     turn: Turn,
     diving_rot: f32,
     standstill_boost_rot: f32, // TODO maybe rename
@@ -114,6 +119,7 @@ impl Player {
             start_boost: StartBoost::new(),
             drift,
             boost: Boost::new(),
+            offroad_invicibility: 0,
             turn,
             diving_rot: 0.0,
             standstill_boost_rot: 0.0,
@@ -131,7 +137,8 @@ impl Player {
     pub fn update(&mut self, race: &Race, kcl: &Kcl) {
         self.physics.rot_vec2 = Vec3::ZERO;
 
-        let ground = self.wheels.iter().any(|wheel| wheel.floor_nor.is_some());
+        let wheel_collision_count = self.wheels.iter().filter(|wheel| wheel.collision().is_some()).count();
+        let ground = wheel_collision_count > 0;
         let (is_landing, airtime) = if ground {
             (self.airtime > 3, 0)
         } else {
@@ -163,8 +170,15 @@ impl Player {
 
         self.physics.update_dir(self.airtime, self.kcl_rot_factor, &self.drift);
 
-        if ground {
-            self.kcl_rot_factor = 0.7;
+        let kcl_rot_factor_sum = self.wheels
+            .iter()
+            .filter_map(|wheel| wheel.collision())
+            .map(|collision| collision.rot_factor)
+            .reduce(Add::add);
+        if self.offroad_invicibility > 0 {
+            self.kcl_rot_factor = self.stats.common.kcl_rot_factors[0];
+        } else if let Some(kcl_rot_factor_sum) = kcl_rot_factor_sum {
+            self.kcl_rot_factor = kcl_rot_factor_sum / wheel_collision_count as f32;
         }
 
         let frame_idx = race.frame();
@@ -191,6 +205,8 @@ impl Player {
         }
 
         self.boost.update();
+
+        self.offroad_invicibility = self.offroad_invicibility.saturating_sub(1);
 
         let is_wheelieing = self
             .bike
@@ -255,7 +271,7 @@ impl Player {
         self.vehicle_body.update(&mut self.physics, &kcl);
 
         for wheel in &mut self.wheels {
-            wheel.update(self.bike.as_ref(), &mut self.physics, &kcl);
+            wheel.update(&self.stats.common, self.bike.as_ref(), &mut self.physics, &kcl);
         }
 
         self.drift.update_hop_physics();
@@ -269,6 +285,7 @@ impl Player {
             .unwrap_or(false);
         if self.rkg.use_item(race.frame()) && !last_use_item {
             self.boost.activate(BoostKind::Strong, 90);
+            self.offroad_invicibility = 90;
         }
     }
 

@@ -111,7 +111,7 @@ impl Physics {
     ) {
         let next_up = wheels
             .iter()
-            .map(|wheel| wheel.floor_nor)
+            .map(|wheel| wheel.collision().map(|collision| collision.floor_nor))
             .chain(iter::once(vehicle_body.floor_nor()))
             .filter_map(identity)
             .reduce(Add::add)
@@ -164,7 +164,7 @@ impl Physics {
             self.vel1_dir = self.dir;
             return;
         }
-        
+
         let next_dir = drift.hop_dir().unwrap_or_else(|| {
             let right = self.rot0.rotate(Vec3::RIGHT);
             right.cross(self.smoothed_up).normalize()
