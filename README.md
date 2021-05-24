@@ -4,7 +4,7 @@ A reimplementation of the physics engine of Mario Kart Wii, aiming for perfectly
 
 ## Status
 
-At the moment, it is possible to replay the rMC3 WR for 1518 frames (until the end of the shroom where the rotation is affected by off-road).
+At the moment, it is possible to replay the rMC3 WR for 1850 frames (until the boost panel).
 
 ## May 2021 roadmap
 
@@ -25,9 +25,9 @@ At the moment, it is possible to replay the rMC3 WR for 1518 frames (until the e
   - [ ] JGPT
   - [ ] CNPT
 - [ ] KCL features
-  - [ ] Floor collision
+  - [x] Floor collision
   - [ ] Wall collision
-  - [ ] Off-road properties
+  - [x] Off-road properties
   - [ ] Boost panels
   - [ ] Ramps
   - [ ] OOB
