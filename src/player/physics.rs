@@ -195,6 +195,7 @@ impl Physics {
         &mut self,
         stats: &Stats,
         airtime: u32,
+        kcl_speed_factor: f32,
         is_drifting: bool,
         boost: &Boost,
         raw_turn: f32,
@@ -230,7 +231,7 @@ impl Physics {
         let base_speed = stats.common.base_speed;
         let boost_factor = boost.factor();
         let wheelie_bonus = if is_wheelieing { 0.15 } else { 0.0 };
-        let next_speed1_soft_limit = base_speed * (boost_factor + wheelie_bonus);
+        let next_speed1_soft_limit = (boost_factor + wheelie_bonus) * kcl_speed_factor * base_speed;
         self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_speed1_soft_limit);
         self.speed1 = self.speed1.min(self.speed1_soft_limit);
 

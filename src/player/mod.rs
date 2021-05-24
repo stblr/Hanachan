@@ -41,6 +41,7 @@ pub struct Player {
     stats: Stats,
     rkg: Rkg,
     airtime: u32,
+    kcl_speed_factor: f32,
     kcl_rot_factor: f32,
     start_boost: StartBoost,
     drift: Drift,
@@ -115,6 +116,7 @@ impl Player {
             stats,
             rkg,
             airtime: 0,
+            kcl_speed_factor: 1.0,
             kcl_rot_factor: 1.0,
             start_boost: StartBoost::new(),
             drift,
@@ -170,6 +172,17 @@ impl Player {
 
         self.physics.update_dir(self.airtime, self.kcl_rot_factor, &self.drift);
 
+        let kcl_speed_factor_sum = self.wheels
+            .iter()
+            .filter_map(|wheel| wheel.collision())
+            .map(|collision| collision.speed_factor)
+            .reduce(Add::add);
+        if self.offroad_invicibility > 0 {
+            self.kcl_speed_factor = self.stats.common.kcl_speed_factors[0];
+        } else if let Some(kcl_speed_factor_sum) = kcl_speed_factor_sum {
+            self.kcl_speed_factor = kcl_speed_factor_sum / wheel_collision_count as f32;
+        }
+
         let kcl_rot_factor_sum = self.wheels
             .iter()
             .filter_map(|wheel| wheel.collision())
@@ -216,6 +229,7 @@ impl Player {
         self.physics.update_vel1(
             &self.stats,
             self.airtime,
+            self.kcl_speed_factor,
             self.drift.is_drifting(),
             &self.boost,
             self.turn.raw(),
