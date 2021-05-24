@@ -54,7 +54,7 @@ impl Wheelie {
             self.rot = (self.rot - self.rot_dec).max(0.0);
         }
 
-        let cos = Vec3::UP.dot(physics.dir);
+        let cos = Vec3::UP.dot(physics.vel1_dir);
         if cos <= 0.5 || self.frame < 15 {
             physics.rot_vec2.x -= self.rot * (1.0 - cos.abs());
         }

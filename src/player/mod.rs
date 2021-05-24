@@ -16,7 +16,7 @@ pub use handle::Handle;
 pub use params::{Character, Params, Vehicle};
 pub use stats::{CommonStats, Stats};
 
-use crate::fs::{kmp::Ktpt, Rkg, RkgTrick, U8};
+use crate::fs::{kmp::Ktpt, Kcl, Rkg, RkgTrick, U8};
 use crate::geom::{Mat33, Vec3};
 use crate::race::{Race, Stage};
 use crate::wii::F32Ext;
@@ -37,6 +37,7 @@ pub struct Player {
     stats: Stats,
     rkg: Rkg,
     airtime: u32,
+    kcl_rot_factor: f32,
     start_boost: StartBoost,
     drift: Drift,
     boost: Boost,
@@ -50,7 +51,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn try_new(common_szs: &U8, ktpt: Ktpt, rkg: Rkg) -> Option<Player> {
+    pub fn try_new(common_szs: &U8, ktpt: Ktpt, kcl: &Kcl, rkg: Rkg) -> Option<Player> {
         let params = rkg.header().params();
 
         let kart_param = common_szs
@@ -79,7 +80,7 @@ impl Player {
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
         let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
 
-        let physics = Physics::new(bsp, ktpt.pos);
+        let physics = Physics::new(bsp, ktpt.pos, kcl);
 
         let vehicle_body = VehicleBody::new(bsp.hitboxes.clone());
 
@@ -109,6 +110,7 @@ impl Player {
             stats,
             rkg,
             airtime: 0,
+            kcl_rot_factor: 1.0,
             start_boost: StartBoost::new(),
             drift,
             boost: Boost::new(),
@@ -126,12 +128,12 @@ impl Player {
         &self.physics
     }
 
-    pub fn update(&mut self, race: &Race) {
+    pub fn update(&mut self, race: &Race, kcl: &Kcl) {
         self.physics.rot_vec2 = Vec3::ZERO;
 
         let ground = self.wheels.iter().any(|wheel| wheel.floor_nor.is_some());
         let (is_landing, airtime) = if ground {
-            (self.airtime != 0, 0)
+            (self.airtime > 3, 0)
         } else {
             (false, self.airtime + 1)
         };
@@ -143,15 +145,27 @@ impl Player {
             self.boost.activate(BoostKind::Weak, self.start_boost.boost_frames());
         }
 
+        let is_wheelieing = self
+            .bike
+            .as_ref()
+            .map(|bike| bike.wheelie.is_wheelieing())
+            .unwrap_or(false);
         self.physics.update_floor_nor(
             self.stats.vehicle.drift_kind.is_inside(),
-            ground,
+            airtime,
             is_landing,
             self.drift.is_hopping(),
+            is_wheelieing,
+            self.boost.is_boosting(),
+            &self.vehicle_body,
             &self.wheels,
         );
 
-        self.physics.update_dir(self.airtime, &self.drift);
+        self.physics.update_dir(self.airtime, self.kcl_rot_factor, &self.drift);
+
+        if ground {
+            self.kcl_rot_factor = 0.7;
+        }
 
         let frame_idx = race.frame();
         let stick_x = self.rkg.stick_x(frame_idx);
@@ -197,17 +211,22 @@ impl Player {
         if let Some(bike) = &mut self.bike {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
 
-            let stick_x = self.rkg.stick_x(race.frame());
-            let drift_stick_x = self.drift.drift_stick_x();
-            bike.lean.update(stick_x, drift_stick_x, is_wheelieing, &mut self.physics, race);
+            bike.lean.update(
+                self.rkg.stick_x(race.frame()),
+                airtime,
+                self.drift.drift_stick_x(),
+                is_wheelieing,
+                &mut self.physics,
+                race,
+            );
         } else {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
 
             let mat = self.physics.mat();
             let front = Mat33::from(mat) * Vec3::FRONT;
-            let front = front.perp_in_plane(self.physics.floor_nor, true);
+            let front = front.perp_in_plane(self.physics.up, true);
             let rej = self.physics.vel.rej_unit(front);
-            let perp = rej.perp_in_plane(self.physics.floor_nor, false);
+            let perp = rej.perp_in_plane(self.physics.up, false);
             let sq_norm = perp.sq_norm();
             let norm = if sq_norm > f32::EPSILON && ground {
                 -sq_norm.wii_sqrt().min(1.0) * (perp.x * front.z - perp.z * front.x).signum()
@@ -231,12 +250,12 @@ impl Player {
             self.physics.rot_vec2.x += self.diving_rot;
         }
 
-        self.physics.update(self.stats.vehicle.drift_kind.is_bike(), race);
+        self.physics.update(&self.stats, race);
 
-        self.vehicle_body.update(&mut self.physics);
+        self.vehicle_body.update(&mut self.physics, &kcl);
 
         for wheel in &mut self.wheels {
-            wheel.update(self.bike.as_ref(), &mut self.physics);
+            wheel.update(self.bike.as_ref(), &mut self.physics, &kcl);
         }
 
         self.drift.update_hop_physics();

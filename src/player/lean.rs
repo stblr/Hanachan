@@ -27,12 +27,13 @@ impl Lean {
     pub fn update(
         &mut self,
         stick_x: f32,
+        airtime: u32,
         drift_stick_x: Option<f32>,
         is_wheelieing: bool,
         physics: &mut Physics,
         race: &Race,
     ) {
-        if race.stage() == Stage::Race {
+        if physics.speed1.abs() >= 5.0 && race.stage() == Stage::Race {
             self.rot_diff += 0.3 * (self.rot_inc() - self.rot_diff);
             self.rot_cap += 0.3 * (1.0 - self.rot_cap);
         }
@@ -52,7 +53,7 @@ impl Lean {
                 (rot_min, rot_max, self.s_factor() * -stick_x)
             }
             None => {
-                let s = if stick_x.abs() <= 0.2 || is_wheelieing {
+                let s = if stick_x.abs() <= 0.2 || airtime > 20 || is_wheelieing {
                     self.rot *= 0.9;
                     0.0
                 } else {

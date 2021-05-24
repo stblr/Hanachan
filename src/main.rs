@@ -77,6 +77,16 @@ fn main() {
             return;
         }
     };
+    let kcl = match track
+        .get_node("./course.kcl")
+        .and_then(|node| node.content().as_file().and_then(|file| file.as_kcl()))
+    {
+        Some(kcl) => kcl,
+        None => {
+            eprintln!("Couldn't find kcl");
+            return;
+        }
+    };
 
     let mut rkg: &[u8] = &match std::fs::read(&args[3]) {
         Ok(rkg) => rkg,
@@ -93,7 +103,7 @@ fn main() {
         }
     };
 
-    let mut player = match Player::try_new(&common_szs, kmp.ktpt.entries[0], rkg) {
+    let mut player = match Player::try_new(&common_szs, kmp.ktpt.entries[0], &kcl, rkg) {
         Some(player) => player,
         None => {
             eprintln!("Couldn't initialize player");
@@ -119,9 +129,9 @@ fn main() {
     let mut race = Race::new();
     let mut desync = false;
     for frame in rkrd.frames() {
-        player.update(&race);
+        player.update(&race, &kcl);
         let physics = player.physics();
-        desync = check_val("FLOOR_NOR", race.frame(), physics.floor_nor, frame.floor_nor) || desync;
+        desync = check_val("FLOOR_NOR", race.frame(), physics.up, frame.floor_nor) || desync;
         desync = check_val("DIR", race.frame(), physics.dir, frame.dir) || desync;
         desync = check_val("POS", race.frame(), physics.pos, frame.pos) || desync;
         desync = check_val("VEL0", race.frame(), physics.vel0, frame.vel0) || desync;

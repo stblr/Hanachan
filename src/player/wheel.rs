@@ -1,4 +1,4 @@
-use crate::fs::BspWheel;
+use crate::fs::{BspWheel, Kcl};
 use crate::geom::{Hitbox, Mat33, Mat34, Vec3};
 use crate::player::{Bike, Handle, Physics};
 use crate::wii::F32Ext;
@@ -35,7 +35,7 @@ impl Wheel {
         }
     }
 
-    pub fn update(&mut self, bike: Option<&Bike>, physics: &mut Physics) {
+    pub fn update(&mut self, bike: Option<&Bike>, physics: &mut Physics, kcl: &Kcl) {
         let bsp_wheel = self.bsp_wheel;
 
         self.axis_s = (self.axis_s + 5.0).min(bsp_wheel.slack_y);
@@ -51,9 +51,9 @@ impl Wheel {
             hitbox_pos += bike.lean.rot() * bsp_wheel.hitbox_radius * 0.3 * right;
         }
         let hitbox = Hitbox::new(hitbox_pos, self.hitbox_radius);
-        let floor_movement = hitbox.check_collision();
-        if let Some(floor_movement) = floor_movement {
-            self.pos += floor_movement;
+        let collision = kcl.check_collision(hitbox);
+        if let Some(collision) = collision {
+            self.pos += collision.movement;
         }
         self.hitbox_radius = bsp_wheel.hitbox_radius;
 
@@ -61,14 +61,17 @@ impl Wheel {
         self.pos = topmost_pos + self.axis_s * axis;
 
         let pos_rel = self.pos - topmost_pos;
-        if floor_movement.is_some() {
-            let dist = bsp_wheel.slack_y - axis.dot(self.pos - topmost_pos);
+        if let Some(collision) = collision {
+            let dist = bsp_wheel.slack_y - axis.dot(self.pos - topmost_pos).max(0.0);
             let dist_acceleration = -bsp_wheel.dist_suspension * dist;
             let speed = axis.dot(self.last_pos_rel - pos_rel);
             let speed_acceleration = -bsp_wheel.speed_suspension * speed;
             let acceleration = (dist_acceleration + speed_acceleration) * axis;
             if physics.vel0.y <= 5.0 {
-                physics.normal_acceleration += acceleration.y;
+                let normal_acceleration = Vec3::new(acceleration.x, 0.0, acceleration.z);
+                let normal_acceleration = normal_acceleration.proj_unit(collision.floor_nor).y;
+                let normal_acceleration = acceleration.y + normal_acceleration;
+                physics.normal_acceleration += normal_acceleration;
             }
 
             let topmost_pos_rel = physics.rot1.inv_rotate(topmost_pos - physics.pos);
@@ -82,7 +85,7 @@ impl Wheel {
         }
         self.last_pos_rel = pos_rel;
 
-        self.floor_nor = floor_movement.map(|_| Vec3::UP); // TODO compute from Kcl
+        self.floor_nor = collision.map(|collision| collision.floor_nor);
         if let Some(floor_nor) = self.floor_nor {
             let vel = self.pos - last_pos - physics.vel1;
             let dot = (vel + 10.0 * 1.3 * Vec3::DOWN).dot(floor_nor);

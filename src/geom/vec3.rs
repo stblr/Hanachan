@@ -98,6 +98,22 @@ impl Vec3 {
             z: self.z.to_radians(),
         }
     }
+
+    pub fn min(self, other: Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x.min(other.x),
+            y: self.y.min(other.y),
+            z: self.z.min(other.z),
+        }
+    }
+
+    pub fn max(self, other: Vec3) -> Vec3 {
+        Vec3 {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+            z: self.z.max(other.z),
+        }
+    }
 }
 
 impl Add for Vec3 {

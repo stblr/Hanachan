@@ -5,6 +5,7 @@ mod bike_parts_disp_param;
 mod bsp;
 mod driver_param;
 mod kart_param;
+mod kcl;
 mod parse;
 mod rkg;
 mod rkrd;
@@ -12,6 +13,7 @@ mod u8;
 
 pub use self::u8::U8;
 pub use bsp::{Bsp, Hitbox as BspHitbox, Wheel as BspWheel};
+pub use kcl::Kcl;
 pub use parse::{Bits, Error, Parse, ResultExt, SliceExt, SliceRefExt};
 pub use rkg::{Rkg, Trick as RkgTrick};
 pub use rkrd::Rkrd;
