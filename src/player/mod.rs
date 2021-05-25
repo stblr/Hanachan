@@ -179,6 +179,7 @@ impl Player {
             .any(|collision| collision.has_boost_panel);
         if has_boost_panel {
             self.boost.activate(BoostKind::Strong, 60);
+            self.offroad_invicibility = self.offroad_invicibility.max(60);
         }
 
         self.physics.update_dir(self.airtime, self.kcl_rot_factor, &self.drift);
@@ -312,7 +313,7 @@ impl Player {
             .unwrap_or(false);
         if self.rkg.use_item(race.frame()) && !last_use_item {
             self.boost.activate(BoostKind::Strong, 90);
-            self.offroad_invicibility = 90;
+            self.offroad_invicibility = self.offroad_invicibility.max(90);
             self.mushroom_boost = 90;
         }
     }
