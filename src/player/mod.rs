@@ -298,8 +298,23 @@ impl Player {
 
         self.vehicle_body.update(&mut self.physics, &kcl);
 
+        let (mut min, mut max) = (Vec3::ZERO, Vec3::ZERO);
         for wheel in &mut self.wheels {
-            wheel.update(&self.stats.common, self.bike.as_ref(), &mut self.physics, &kcl);
+            let vehicle_movement = wheel.update(
+                &self.stats.common,
+                self.bike.as_ref(),
+                &mut self.physics,
+                &kcl,
+            );
+            min = min.min(vehicle_movement);
+            max = max.max(vehicle_movement);
+        }
+
+        let vehicle_movement = min + max;
+        self.physics.pos += vehicle_movement;
+
+        for wheel in &mut self.wheels {
+            wheel.apply_suspension(self.bike.as_ref(), &mut self.physics, vehicle_movement);
         }
 
         self.drift.update_hop_physics();

@@ -1,5 +1,5 @@
 use crate::fs::{BspHitbox, Kcl};
-use crate::geom::{Hitbox, Mat33, Mat34, Vec3};
+use crate::geom::{Hitbox, Vec3};
 use crate::player::Physics;
 
 #[derive(Clone, Debug)]
@@ -58,24 +58,7 @@ impl VehicleBody {
                 vel.y += physics.vel1.y;
             }
 
-            let dot = vel.dot(floor_nor);
-            if dot < 0.0 {
-                let mat = Mat34::from_quat_and_pos(physics.rot0, Vec3::ZERO);
-                let mat = Mat33::from(mat * physics.inv_inertia_tensor * mat.transpose());
-                let cross = mat * pos_rel.cross(floor_nor);
-                let cross = cross.cross(pos_rel);
-                let val = -dot / (1.0 + floor_nor.dot(cross));
-                let cross = floor_nor.cross(-vel);
-                let cross = cross.cross(floor_nor);
-                let cross = cross.normalize();
-                let other_val = val * vel.dot(cross) / dot;
-                let other_val = other_val.signum() * other_val.abs().min(0.01 * val);
-                let sum = val * floor_nor + other_val * cross;
-                physics.vel0 += sum;
-                let mut cross = physics.rot0.inv_rotate(mat * pos_rel.cross(sum));
-                cross.y = 0.0;
-                physics.rot_vec0 += cross;
-            }
+            physics.apply_rigid_body_motion(pos_rel, vel, floor_nor);
         } else {
             self.floor_nor = None;
         }
