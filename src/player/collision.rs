@@ -5,4 +5,5 @@ pub struct Collision {
     pub floor_nor: Vec3,
     pub speed_factor: f32,
     pub rot_factor: f32,
+    pub has_boost_panel: bool,
 }

@@ -28,7 +28,7 @@ At the moment, it is possible to replay the rMC3 WR for 1850 frames (until the b
   - [x] Floor collision
   - [ ] Wall collision
   - [x] Off-road properties
-  - [ ] Boost panels
+  - [x] Boost panels
   - [ ] Ramps
   - [ ] OOB
   - [ ] Cannons

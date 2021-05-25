@@ -49,6 +49,7 @@ pub struct Player {
     offroad_invicibility: u16,
     turn: Turn,
     diving_rot: f32,
+    mushroom_boost: u16,
     standstill_boost_rot: f32, // TODO maybe rename
     bike: Option<Bike>,
     physics: Physics,
@@ -124,6 +125,7 @@ impl Player {
             offroad_invicibility: 0,
             turn,
             diving_rot: 0.0,
+            mushroom_boost: 0,
             standstill_boost_rot: 0.0,
             bike,
             physics,
@@ -169,6 +171,15 @@ impl Player {
             &self.vehicle_body,
             &self.wheels,
         );
+
+        let has_boost_panel = self
+            .wheels
+            .iter()
+            .filter_map(|wheel| wheel.collision())
+            .any(|collision| collision.has_boost_panel);
+        if has_boost_panel {
+            self.boost.activate(BoostKind::Strong, 60);
+        }
 
         self.physics.update_dir(self.airtime, self.kcl_rot_factor, &self.drift);
 
@@ -218,6 +229,8 @@ impl Player {
         }
 
         self.boost.update();
+
+        self.mushroom_boost = self.mushroom_boost.saturating_sub(1);
 
         self.offroad_invicibility = self.offroad_invicibility.saturating_sub(1);
 
@@ -300,6 +313,7 @@ impl Player {
         if self.rkg.use_item(race.frame()) && !last_use_item {
             self.boost.activate(BoostKind::Strong, 90);
             self.offroad_invicibility = 90;
+            self.mushroom_boost = 90;
         }
     }
 
@@ -320,7 +334,7 @@ impl Player {
                 .as_ref()
                 .map(|bike| bike.wheelie.is_wheelieing())
                 .unwrap_or(false);
-            let (boost_factor, wheelie_factor) = if self.boost.is_strong() {
+            let (boost_factor, wheelie_factor) = if self.mushroom_boost > 0 {
                 let wheelie_factor = if is_wheelieing { 0.5 } else { 1.0 };
                 (0.25, wheelie_factor)
             } else {

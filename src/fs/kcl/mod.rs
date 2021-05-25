@@ -26,6 +26,7 @@ impl Kcl {
         let mut floor_dist = 0.0;
         let mut floor_nor = Vec3::ZERO;
         let mut closest_kind = 0;
+        let mut all_kinds = 0;
 
         for tri_idx in tri_list.iter() {
             let tri = &self.tris[*tri_idx as usize];
@@ -33,6 +34,7 @@ impl Kcl {
                 found = true;
                 min = min.min(collision.dist * collision.nor);
                 max = max.max(collision.dist * collision.nor);
+                all_kinds |= 1 << (collision.flags & 0x1f);
                 if collision.dist > floor_dist {
                     floor_dist = collision.dist;
                     floor_nor = collision.nor;
@@ -47,6 +49,7 @@ impl Kcl {
                 floor_dist,
                 floor_nor,
                 closest_kind,
+                all_kinds,
             })
         } else {
             None
@@ -96,4 +99,5 @@ pub struct Collision {
     pub floor_dist: f32,
     pub floor_nor: Vec3,
     pub closest_kind: u8,
+    pub all_kinds: u32,
 }

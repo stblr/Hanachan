@@ -99,6 +99,7 @@ impl Wheel {
             floor_nor: collision.floor_nor,
             speed_factor: stats.kcl_speed_factors[collision.closest_kind as usize],
             rot_factor: stats.kcl_rot_factors[collision.closest_kind as usize],
+            has_boost_panel: collision.all_kinds & 0x40 != 0,
         });
         if let Some(collision) = &self.collision {
             let floor_nor = collision.floor_nor;

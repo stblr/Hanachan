@@ -20,13 +20,6 @@ impl Boost {
         }
     }
 
-    pub fn is_strong(&self) -> bool {
-        match self.kind() {
-            Some(Kind::Strong) => true,
-            _ => false,
-        }
-    }
-
     pub fn is_boosting(&self) -> bool {
         self.kind().is_some()
     }
