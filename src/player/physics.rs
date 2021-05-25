@@ -233,6 +233,7 @@ impl Physics {
         let wheelie_bonus = if is_wheelieing { 0.15 } else { 0.0 };
         let next_speed1_soft_limit = (boost_factor + wheelie_bonus) * kcl_speed_factor * base_speed;
         self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_speed1_soft_limit);
+        self.speed1_soft_limit = (self.speed1_soft_limit).min(120.0);
         self.speed1 = self.speed1.min(self.speed1_soft_limit);
 
         let right = self.smoothed_up.cross(self.dir);
@@ -276,7 +277,8 @@ impl Physics {
         }
 
         self.vel = self.vel0 + self.vel1;
-        self.vel = self.vel.norm() * self.vel.normalize();
+        let speed = self.vel.norm().min(120.0);
+        self.vel = speed * self.vel.normalize();
         self.pos += self.vel;
 
         self.rot_vec0 = 0.98 * self.rot_vec0;
