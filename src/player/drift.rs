@@ -96,22 +96,17 @@ impl Drift {
                 self.state = State::Hop(HopState::new(physics.rot0));
             }
             State::Hop(hop) => {
-                if let Some(hop_stick_x) = hop.update(stick_x, ground) {
+                if hop.update(stick_x, ground) {
                     if let Some(outside_drift) = &mut self.outside_drift {
+                        let hop_stick_x = hop.stick_x.unwrap_or(0.0);
                         outside_drift.update_angle_on_drift_start(hop, hop_stick_x, physics.rot0);
                     }
 
-                    if drift_input {
-                        let outside_drift_turn_bonus = self.outside_drift.as_ref().map(|_| {
-                            let speed_ratio = (physics.speed1 / stats.common.base_speed).min(1.0);
-                            speed_ratio * stats.common.manual_drift_tightness * 0.5
-                        });
-                        let is_bike = stats.vehicle.drift_kind.is_bike();
-                        let drift_state =
-                            DriftState::new(hop_stick_x, outside_drift_turn_bonus, is_bike);
-                        self.state = State::Drift(drift_state);
-                    } else {
-                        self.state = State::Idle;
+                    match hop.stick_x {
+                        Some(hop_stick_x) if drift_input => {
+                            self.start_drift(hop_stick_x, stats, physics);
+                        }
+                        _ => self.state = State::Idle,
                     }
                 }
             }
@@ -158,6 +153,16 @@ impl Drift {
         }
     }
 
+    fn start_drift(&mut self, hop_stick_x: f32, stats: &Stats, physics: &Physics) {
+        let outside_drift_turn_bonus = self.outside_drift.as_ref().map(|_| {
+            let speed_ratio = (physics.speed1 / stats.common.base_speed).min(1.0);
+            speed_ratio * stats.common.manual_drift_tightness * 0.5
+        });
+        let is_bike = stats.vehicle.drift_kind.is_bike();
+        let drift_state = DriftState::new(hop_stick_x, outside_drift_turn_bonus, is_bike);
+        self.state = State::Drift(drift_state);
+    }
+
     pub fn update_hop_physics(&mut self) {
         if let State::Hop(hop) = &mut self.state {
             hop.update_physics();
@@ -194,14 +199,14 @@ impl HopState {
         }
     }
 
-    fn update(&mut self, stick_x: f32, ground: bool) -> Option<f32> {
+    fn update(&mut self, stick_x: f32, ground: bool) -> bool {
         self.frame = (self.frame + 1).min(3);
 
         if self.stick_x.is_none() && stick_x != 0.0 {
             self.stick_x = Some(stick_x.signum() * stick_x.abs().ceil())
         }
 
-        self.stick_x.filter(|_| self.frame >= 3 && ground)
+        self.frame >= 3 && ground
     }
 
     fn update_physics(&mut self) {
