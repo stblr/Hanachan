@@ -210,11 +210,17 @@ impl Player {
         let stick_x = self.rkg.stick_x(frame_idx);
         self.turn.update(&self.stats.common, stick_x, &self.drift);
 
-        let drift = self.rkg.drift(frame_idx);
+        let drift_input = self.rkg.drift(frame_idx);
+        let last_drift_input = race
+            .frame()
+            .checked_sub(1)
+            .map(|last_frame| self.rkg.drift(last_frame))
+            .unwrap_or(false);
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
         self.drift.update(
             &self.stats,
-            drift,
+            drift_input,
+            last_drift_input,
             stick_x,
             self.airtime,
             &mut self.boost,

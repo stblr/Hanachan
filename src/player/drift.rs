@@ -76,6 +76,7 @@ impl Drift {
         &mut self,
         stats: &Stats,
         drift_input: bool,
+        last_drift_input: bool,
         stick_x: f32,
         airtime: u32,
         boost: &mut Boost,
@@ -85,7 +86,7 @@ impl Drift {
         let ground = airtime == 0;
 
         match &mut self.state {
-            State::Idle if drift_input => {
+            State::Idle if drift_input && !last_drift_input => {
                 if let Some(wheelie) = wheelie {
                     wheelie.cancel();
                 }
