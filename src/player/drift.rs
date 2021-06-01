@@ -80,10 +80,25 @@ impl Drift {
         stick_x: f32,
         airtime: u32,
         boost: &mut Boost,
-        wheelie: Option<&mut Wheelie>,
+        mut wheelie: Option<&mut Wheelie>,
         physics: &mut Physics,
     ) {
         let ground = airtime == 0;
+
+        if !ground && stick_x != 0.0 {
+            match &self.state {
+                State::Idle if drift_input => {
+                    if let Some(wheelie) = wheelie.as_mut() {
+                        wheelie.cancel();
+                    }
+                    self.state = State::SlipdriftCharge(SlipdriftChargeState::new(stick_x));
+                }
+                State::SlipdriftCharge(_) if !drift_input => {
+                    self.state = State::Idle;
+                }
+                _ => (),
+            }
+        }
 
         match &mut self.state {
             State::Idle if drift_input && !last_drift_input => {
@@ -96,8 +111,14 @@ impl Drift {
 
                 self.state = State::Hop(HopState::new(physics.rot0));
             }
+            State::SlipdriftCharge(slipdrift_charge) if ground => {
+                let stick_x = slipdrift_charge.stick_x;
+                self.start_drift(stick_x, stats, physics);
+            }
             State::Hop(hop) => {
-                if hop.update(stick_x, ground) {
+                hop.update(stick_x);
+
+                if hop.can_start_drift() && ground {
                     if let Some(outside_drift) = &mut self.outside_drift {
                         let hop_stick_x = hop.stick_x.unwrap_or(0.0);
                         outside_drift.update_angle_on_drift_start(hop, hop_stick_x, physics.rot0);
@@ -174,8 +195,22 @@ impl Drift {
 #[derive(Clone, Debug)]
 enum State {
     Idle,
+    SlipdriftCharge(SlipdriftChargeState),
     Hop(HopState),
     Drift(DriftState),
+}
+
+#[derive(Clone, Debug)]
+struct SlipdriftChargeState {
+    stick_x: f32,
+}
+
+impl SlipdriftChargeState {
+    pub fn new(stick_x: f32) -> SlipdriftChargeState {
+        SlipdriftChargeState {
+            stick_x: stick_x.signum(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -200,14 +235,16 @@ impl HopState {
         }
     }
 
-    fn update(&mut self, stick_x: f32, ground: bool) -> bool {
+    fn update(&mut self, stick_x: f32) {
         self.frame = (self.frame + 1).min(3);
 
         if self.stick_x.is_none() && stick_x != 0.0 {
             self.stick_x = Some(stick_x.signum() * stick_x.abs().ceil())
         }
+    }
 
-        self.frame >= 3 && ground
+    fn can_start_drift(&self) -> bool {
+        self.frame >= 3
     }
 
     fn update_physics(&mut self) {
