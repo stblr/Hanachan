@@ -157,7 +157,7 @@ impl Player {
         let floor_collision_count = wheel_collision_count + vehicle_body_floor_collision_count;
         let ground = floor_collision_count > 0;
         let (is_landing, airtime) = if ground {
-            (self.airtime > 3, 0)
+            (self.airtime >= 3, 0)
         } else {
             (false, self.airtime + 1)
         };
