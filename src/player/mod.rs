@@ -184,15 +184,15 @@ impl Player {
 
         self.physics.update_dir(self.airtime, self.kcl_rot_factor, &self.drift);
 
-        let kcl_speed_factor_sum = self.wheels
+        let kcl_speed_factor_min = self.wheels
             .iter()
             .filter_map(|wheel| wheel.collision())
             .map(|collision| collision.speed_factor)
-            .reduce(Add::add);
+            .reduce(|sf0, sf1| sf0.min(sf1));
         if self.offroad_invicibility > 0 {
             self.kcl_speed_factor = self.stats.common.kcl_speed_factors[0];
-        } else if let Some(kcl_speed_factor_sum) = kcl_speed_factor_sum {
-            self.kcl_speed_factor = kcl_speed_factor_sum / wheel_collision_count as f32;
+        } else if let Some(kcl_speed_factor_min) = kcl_speed_factor_min {
+            self.kcl_speed_factor = kcl_speed_factor_min;
         }
 
         let kcl_rot_factor_sum = self.wheels
