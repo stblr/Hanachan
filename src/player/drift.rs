@@ -132,7 +132,7 @@ impl Drift {
                     }
                 }
             }
-            State::Drift(_) if !ground => {
+            State::Drift(_) if airtime > 5 => {
                 if let Some(outside_drift) = &mut self.outside_drift {
                     outside_drift.update_angle_while_airborne(physics.rot0);
                 }
