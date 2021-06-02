@@ -208,26 +208,31 @@ impl Physics {
         }
 
         let ground = airtime == 0;
-        if !boost.is_boosting() && ground && !is_drifting {
-            let t = stats.common.handling_speed_multiplier;
-            self.speed1 *= t + (1.0 - t) * (1.0 - raw_turn.abs());
-        }
 
-        self.last_speed1 = self.speed1;
+        let mut acceleration = 0.0;
         if !ground {
             if airtime > 5 {
                 self.speed1 *= 0.999;
             }
         } else if let Some(boost_acceleration) = boost.acceleration() {
-            self.speed1 += boost_acceleration;
+            acceleration = boost_acceleration;
         } else if race.stage() == Stage::Race {
             let (ys, xs): (&[f32], &[f32]) = if is_drifting {
                 (&stats.common.drift_acceleration_ys, &stats.common.drift_acceleration_xs)
             } else {
                 (&stats.common.acceleration_ys, &stats.common.acceleration_xs)
             };
-            self.speed1 += self.compute_acceleration(ys, xs);
+            acceleration = self.compute_acceleration(ys, xs);
+
+            if !is_drifting {
+                let t = stats.common.handling_speed_multiplier;
+                self.speed1 *= t + (1.0 - t) * (1.0 - raw_turn.abs());
+            }
         }
+
+        self.last_speed1 = self.speed1;
+
+        self.speed1 += acceleration;
 
         let base_speed = stats.common.base_speed;
         let boost_factor = boost.factor();
