@@ -6,6 +6,7 @@ use crate::player::{Collision, CommonStats, Physics};
 pub struct VehicleBody {
     bsp_hitboxes: Vec<BspHitbox>,
     collision: Option<Collision>,
+    has_floor_collision: bool,
 }
 
 impl VehicleBody {
@@ -13,11 +14,20 @@ impl VehicleBody {
         VehicleBody {
             bsp_hitboxes,
             collision: None,
+            has_floor_collision: false,
         }
     }
 
     pub fn collision(&self) -> Option<&Collision> {
         self.collision.as_ref()
+    }
+
+    pub fn override_collision(&mut self, collision: Collision) {
+        self.collision = Some(collision);
+    }
+
+    pub fn has_floor_collision(&self) -> bool {
+        self.has_floor_collision
     }
 
     pub fn update(&mut self, stats: &CommonStats, physics: &mut Physics, kcl: &Kcl) {
@@ -52,6 +62,8 @@ impl VehicleBody {
                 }
             }
         }
+
+        self.has_floor_collision = count > 0;
 
         if count > 0 {
             let movement = min + max;

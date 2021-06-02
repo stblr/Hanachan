@@ -43,6 +43,10 @@ impl Wheel {
         }
     }
 
+    pub fn hitbox_pos_rel(&self) -> Vec3 {
+        self.hitbox_pos_rel
+    }
+
     pub fn collision(&self) -> Option<&Collision> {
         self.collision.as_ref()
     }
@@ -53,7 +57,7 @@ impl Wheel {
         bike: Option<&Bike>,
         physics: &mut Physics,
         kcl: &Kcl,
-    ) -> Vec3 {
+    ) -> Option<Vec3> {
         let bsp_wheel = self.bsp_wheel;
 
         self.axis_s = (self.axis_s + 5.0).min(bsp_wheel.slack_y);
@@ -85,14 +89,9 @@ impl Wheel {
 
         self.axis_s = self.axis.dot(self.pos - self.topmost_pos);
         if self.axis_s < 0.0 {
-            if let Some(collision) = collision {
-                let vel = 10.0 * 1.3 * Vec3::DOWN;
-                let floor_nor = collision.floor_nor.normalize();
-                physics.apply_rigid_body_motion(self.hitbox_pos_rel, vel, floor_nor);
-            }
-            self.axis_s * self.axis
+            Some(self.axis_s * self.axis)
         } else {
-            Vec3::ZERO
+            None
         }
     }
 

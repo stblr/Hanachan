@@ -148,8 +148,7 @@ impl Player {
             .iter()
             .filter(|wheel| wheel.collision().is_some())
             .count();
-        let vehicle_body_has_floor_collision = self.vehicle_body.collision().is_some();
-        let vehicle_body_floor_collision_count = if vehicle_body_has_floor_collision {
+        let vehicle_body_floor_collision_count = if self.vehicle_body.has_floor_collision() {
             1
         } else {
             0
@@ -222,7 +221,7 @@ impl Player {
         if self.offroad_invicibility > 0 {
             self.kcl_rot_factor = self.stats.common.kcl_rot_factors[0];
         } else if let Some(kcl_rot_factor_sum) = kcl_rot_factor_sum {
-            let has_both = wheel_collision_count > 0 && vehicle_body_has_floor_collision;
+            let has_both = wheel_collision_count > 0 && self.vehicle_body.collision().is_some();
             let floor_collision_count = if has_both {
                 // This is a bug in the game
                 floor_collision_count + 1
@@ -330,7 +329,11 @@ impl Player {
 
         self.vehicle_body.update(&self.stats.common, &mut self.physics, &kcl);
 
+        let mut count = 0;
         let (mut min, mut max) = (Vec3::ZERO, Vec3::ZERO);
+        let mut pos_rel = Vec3::ZERO;
+        let mut vel = Vec3::ZERO;
+        let mut floor_nor = Vec3::ZERO;
         for wheel in &mut self.wheels {
             let vehicle_movement = wheel.update(
                 &self.stats.common,
@@ -338,12 +341,35 @@ impl Player {
                 &mut self.physics,
                 &kcl,
             );
-            min = min.min(vehicle_movement);
-            max = max.max(vehicle_movement);
+
+            if let Some(vehicle_movement) = vehicle_movement {
+                min = min.min(vehicle_movement);
+                max = max.max(vehicle_movement);
+
+                if let Some(collision) = wheel.collision() {
+                    count += 1;
+                    pos_rel += wheel.hitbox_pos_rel();
+                    vel += 10.0 * 1.3 * Vec3::DOWN;
+                    floor_nor += collision.floor_nor;
+                }
+            }
         }
 
         let vehicle_movement = min + max;
         self.physics.pos += vehicle_movement;
+
+        if count > 0 && self.vehicle_body.collision().is_none() {
+            let pos_rel = (1.0 / count as f32) * pos_rel;
+            let vel = (1.0 / count as f32) * vel;
+            let floor_nor = floor_nor.normalize();
+            self.physics.apply_rigid_body_motion(pos_rel, vel, floor_nor);
+            self.vehicle_body.override_collision(Collision {
+                floor_nor,
+                speed_factor: 1.0,
+                rot_factor: 1.0,
+                has_boost_panel: false,
+            });
+        }
 
         for wheel in &mut self.wheels {
             wheel.apply_suspension(self.bike.as_ref(), &mut self.physics, vehicle_movement);
