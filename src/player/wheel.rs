@@ -123,7 +123,7 @@ impl Wheel {
                 physics.normal_acceleration += normal_acceleration;
             }
 
-            let topmost_pos_rel = physics.rot1.inv_rotate(self.topmost_pos - physics.pos);
+            let topmost_pos_rel = physics.rot1.inv_rotate(topmost_pos - physics.pos);
             let acceleration = physics.rot1.inv_rotate(acceleration);
             let mut cross = topmost_pos_rel.cross(acceleration);
             if bike.map(|bike| bike.wheelie.rot() > 0.0).unwrap_or(false) {
