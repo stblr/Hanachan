@@ -202,6 +202,8 @@ impl Physics {
         is_wheelieing: bool,
         race: &Race,
     ) {
+        let last_speed_ratio = (self.speed1 / stats.common.base_speed).min(1.0);
+
         if !is_drifting && race.stage() == Stage::Race {
             self.speed1 += self.speed1_adj;
         }
@@ -225,7 +227,7 @@ impl Physics {
 
             if !is_drifting {
                 let t = stats.common.handling_speed_multiplier;
-                self.speed1 *= t + (1.0 - t) * (1.0 - raw_turn.abs());
+                self.speed1 *= t + (1.0 - t) * (1.0 - raw_turn.abs() * last_speed_ratio);
             }
         }
 
