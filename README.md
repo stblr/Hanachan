@@ -38,7 +38,7 @@ At the moment, it is possible to replay the rMC3 WR for 5080 frames (until the e
   - [ ] Tricks
   - [ ] Respawn boost
   - [ ] Nosediving/taildiving
-  - [ ] Slip drifts
+  - [x] Slipdrifts
 - [ ] CLI overhaul
   - [ ] Make RKRD optional
   - [ ] Multiple runs
