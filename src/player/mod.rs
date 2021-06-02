@@ -17,6 +17,8 @@ pub use handle::Handle;
 pub use params::{Character, Params, Vehicle};
 pub use stats::{CommonStats, Stats};
 
+use std::convert::identity;
+use std::iter;
 use std::ops::Add;
 
 use crate::fs::{kmp::Ktpt, Kcl, Rkg, RkgTrick, U8};
@@ -141,8 +143,19 @@ impl Player {
     pub fn update(&mut self, race: &Race, kcl: &Kcl) {
         self.physics.rot_vec2 = Vec3::ZERO;
 
-        let wheel_collision_count = self.wheels.iter().filter(|wheel| wheel.collision().is_some()).count();
-        let ground = wheel_collision_count > 0;
+        let wheel_collision_count = self
+            .wheels
+            .iter()
+            .filter(|wheel| wheel.collision().is_some())
+            .count();
+        let vehicle_body_has_floor_collision = self.vehicle_body.collision().is_some();
+        let vehicle_body_floor_collision_count = if vehicle_body_has_floor_collision {
+            1
+        } else {
+            0
+        };
+        let floor_collision_count = wheel_collision_count + vehicle_body_floor_collision_count;
+        let ground = floor_collision_count > 0;
         let (is_landing, airtime) = if ground {
             (self.airtime > 3, 0)
         } else {
@@ -184,9 +197,12 @@ impl Player {
 
         self.physics.update_dir(self.airtime, self.kcl_rot_factor, &self.drift);
 
-        let kcl_speed_factor_min = self.wheels
+        let kcl_speed_factor_min = self
+            .wheels
             .iter()
-            .filter_map(|wheel| wheel.collision())
+            .map(|wheel| wheel.collision())
+            .chain(iter::once(self.vehicle_body.collision()))
+            .filter_map(identity)
             .map(|collision| collision.speed_factor)
             .reduce(|sf0, sf1| sf0.min(sf1));
         if self.offroad_invicibility > 0 {
@@ -195,15 +211,25 @@ impl Player {
             self.kcl_speed_factor = kcl_speed_factor_min;
         }
 
-        let kcl_rot_factor_sum = self.wheels
+        let kcl_rot_factor_sum = self
+            .wheels
             .iter()
-            .filter_map(|wheel| wheel.collision())
+            .map(|wheel| wheel.collision())
+            .chain(iter::once(self.vehicle_body.collision()))
+            .filter_map(identity)
             .map(|collision| collision.rot_factor)
             .reduce(Add::add);
         if self.offroad_invicibility > 0 {
             self.kcl_rot_factor = self.stats.common.kcl_rot_factors[0];
         } else if let Some(kcl_rot_factor_sum) = kcl_rot_factor_sum {
-            self.kcl_rot_factor = kcl_rot_factor_sum / wheel_collision_count as f32;
+            let has_both = wheel_collision_count > 0 && vehicle_body_has_floor_collision;
+            let floor_collision_count = if has_both {
+                // This is a bug in the game
+                floor_collision_count + 1
+            } else {
+                floor_collision_count
+            };
+            self.kcl_rot_factor = kcl_rot_factor_sum / floor_collision_count as f32;
         }
 
         let frame_idx = race.frame();
@@ -302,7 +328,7 @@ impl Player {
 
         self.physics.update(&self.stats, race);
 
-        self.vehicle_body.update(&mut self.physics, &kcl);
+        self.vehicle_body.update(&self.stats.common, &mut self.physics, &kcl);
 
         let (mut min, mut max) = (Vec3::ZERO, Vec3::ZERO);
         for wheel in &mut self.wheels {

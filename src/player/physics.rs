@@ -111,9 +111,10 @@ impl Physics {
     ) {
         let next_up = wheels
             .iter()
-            .map(|wheel| wheel.collision().map(|collision| collision.floor_nor))
-            .chain(iter::once(vehicle_body.floor_nor()))
+            .map(|wheel| wheel.collision())
+            .chain(iter::once(vehicle_body.collision()))
             .filter_map(identity)
+            .map(|collision| collision.floor_nor)
             .reduce(Add::add)
             .map(|floor_nor| floor_nor.normalize())
             .unwrap_or(Vec3::UP);

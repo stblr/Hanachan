@@ -1,29 +1,32 @@
 use crate::fs::{BspHitbox, Kcl};
 use crate::geom::{Hitbox, Vec3};
-use crate::player::Physics;
+use crate::player::{Collision, CommonStats, Physics};
 
 #[derive(Clone, Debug)]
 pub struct VehicleBody {
     bsp_hitboxes: Vec<BspHitbox>,
-    floor_nor: Option<Vec3>,
+    collision: Option<Collision>,
 }
 
 impl VehicleBody {
     pub fn new(bsp_hitboxes: Vec<BspHitbox>) -> VehicleBody {
         VehicleBody {
             bsp_hitboxes,
-            floor_nor: None,
+            collision: None,
         }
     }
 
-    pub fn floor_nor(&self) -> Option<Vec3> {
-        self.floor_nor
+    pub fn collision(&self) -> Option<&Collision> {
+        self.collision.as_ref()
     }
 
-    pub fn update(&mut self, physics: &mut Physics, kcl: &Kcl) {
+    pub fn update(&mut self, stats: &CommonStats, physics: &mut Physics, kcl: &Kcl) {
         let mut count = 0;
         let (mut min, mut max) = (Vec3::ZERO, Vec3::ZERO);
         let mut floor_nor = Vec3::ZERO;
+        let mut speed_factor: f32 = 1.0;
+        let mut rot_factor = 0.0;
+        let mut has_boost_panel = false;
         let mut pos_rel = Vec3::ZERO;
         for bsp_hitbox in &self.bsp_hitboxes {
             if !bsp_hitbox.walls_only {
@@ -32,9 +35,18 @@ impl VehicleBody {
                 let hitbox = Hitbox::new(pos, bsp_hitbox.radius);
                 if let Some(collision) = kcl.check_collision(hitbox) {
                     count += 1;
+
                     min = min.min(collision.movement);
                     max = max.max(collision.movement);
+
                     floor_nor += collision.floor_nor;
+                    let closest_kind = collision.closest_kind as usize;
+                    let hitbox_speed_factor = stats.kcl_speed_factors[closest_kind];
+                    speed_factor = speed_factor.min(hitbox_speed_factor);
+                    let hitbox_rot_factor = stats.kcl_rot_factors[closest_kind];
+                    rot_factor += hitbox_rot_factor;
+                    has_boost_panel = has_boost_panel || collision.all_kinds & 0x40 != 0;
+
                     let nor = collision.movement.normalize();
                     pos_rel = pos_rel + hitbox_pos_rel - bsp_hitbox.radius * nor;
                 }
@@ -46,7 +58,12 @@ impl VehicleBody {
             physics.pos += movement;
 
             let floor_nor = floor_nor.normalize();
-            self.floor_nor = Some(floor_nor);
+            self.collision = Some(Collision {
+                floor_nor,
+                speed_factor,
+                rot_factor: rot_factor / count as f32,
+                has_boost_panel: false,
+            });
 
             let pos_rel = (1.0 / count as f32) * pos_rel;
 
@@ -60,7 +77,7 @@ impl VehicleBody {
 
             physics.apply_rigid_body_motion(pos_rel, vel, floor_nor);
         } else {
-            self.floor_nor = None;
+            self.collision = None;
         }
     }
 }
