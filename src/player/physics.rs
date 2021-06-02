@@ -231,8 +231,12 @@ impl Physics {
         let base_speed = stats.common.base_speed;
         let boost_factor = boost.factor();
         let wheelie_bonus = if is_wheelieing { 0.15 } else { 0.0 };
-        let next_speed1_soft_limit = (boost_factor + wheelie_bonus) * kcl_speed_factor * base_speed;
-        self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_speed1_soft_limit);
+        let mut next_soft_limit = (boost_factor + wheelie_bonus) * kcl_speed_factor * base_speed;
+        if let Some(boost_limit) = boost.limit() {
+            let boost_limit = boost_limit * kcl_speed_factor;
+            next_soft_limit = next_soft_limit.max(boost_limit);
+        }
+        self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_soft_limit);
         self.speed1_soft_limit = (self.speed1_soft_limit).min(120.0);
         self.speed1 = self.speed1.min(self.speed1_soft_limit);
 

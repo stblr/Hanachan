@@ -42,6 +42,13 @@ impl Boost {
         }
     }
 
+    pub fn limit(&self) -> Option<f32> {
+        match self.kind() {
+            Some(Kind::Strong) => Some(115.0),
+            _ => None,
+        }
+    }
+
     pub fn update(&mut self) {
         for duration in &mut self.durations {
             *duration = duration.saturating_sub(1);
