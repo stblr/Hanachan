@@ -142,7 +142,6 @@ impl Physics {
         } else if airtime == 0 {
             self.up = next_up;
 
-            // TODO handle boost/wheelie
             let smoothing_factor = if is_boosting || is_wheelieing {
                 0.8
             } else {
