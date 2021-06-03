@@ -42,6 +42,8 @@ pub struct Frame {
     pub rot_vec2: Vec3,
     pub rot0: Quat,
     pub rot1: Quat,
+    pub animation: u16,
+    pub checkpoint_idx: u16,
 }
 
 impl Parse for Frame {
@@ -59,6 +61,8 @@ impl Parse for Frame {
             vel: input.take()?,
             rot0: input.take()?,
             rot1: input.take()?,
+            animation: input.take()?,
+            checkpoint_idx: input.take()?,
         })
     }
 }
