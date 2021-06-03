@@ -1,3 +1,9 @@
+mod ckph;
+mod ckpt;
+mod enph;
+mod enpt;
+mod itph;
+mod itpt;
 mod ktpt;
 
 pub use ktpt::Ktpt;
@@ -6,9 +12,22 @@ use std::iter;
 
 use crate::fs::{Error, Parse, ResultExt, SliceExt, SliceRefExt};
 
+use ckph::Ckph;
+use ckpt::Ckpt;
+use enph::Enph;
+use enpt::Enpt;
+use itph::Itph;
+use itpt::Itpt;
+
 #[derive(Clone, Debug)]
 pub struct Kmp {
     pub ktpt: Section<Ktpt>,
+    pub enpt: Section<Enpt>,
+    pub enph: Section<Enph>,
+    pub itpt: Section<Itpt>,
+    pub itph: Section<Itph>,
+    pub ckpt: Section<Ckpt>,
+    pub ckph: Section<Ckph>,
 }
 
 impl Parse for Kmp {
@@ -47,6 +66,12 @@ impl Parse for Kmp {
 
         Ok(Kmp {
             ktpt: parse_section(section_offsets_input.take()?, &mut input, &mut prev_offset)?,
+            enpt: parse_section(section_offsets_input.take()?, &mut input, &mut prev_offset)?,
+            enph: parse_section(section_offsets_input.take()?, &mut input, &mut prev_offset)?,
+            itpt: parse_section(section_offsets_input.take()?, &mut input, &mut prev_offset)?,
+            itph: parse_section(section_offsets_input.take()?, &mut input, &mut prev_offset)?,
+            ckpt: parse_section(section_offsets_input.take()?, &mut input, &mut prev_offset)?,
+            ckph: parse_section(section_offsets_input.take()?, &mut input, &mut prev_offset)?,
         })
     }
 }
@@ -72,4 +97,27 @@ impl<T: Entry> Parse for Section<T> {
 
 pub trait Entry: Parse {
     const FOURCC: [u8; 4];
+}
+
+struct GroupIdcs {
+    group_idcs: Vec<u8>,
+}
+
+impl From<GroupIdcs> for Vec<u8> {
+    fn from(group_idcs: GroupIdcs) -> Vec<u8> {
+        group_idcs.group_idcs
+    }
+}
+
+impl Parse for GroupIdcs {
+    fn parse(input: &mut &[u8]) -> Result<GroupIdcs, Error> {
+        iter::repeat_with(|| input.take())
+            .take(6)
+            .filter_map(|group_idx| match group_idx {
+                Ok(255) => None,
+                val => Some(val),
+            })
+            .collect::<Result<_, _>>()
+            .map(|group_idcs| GroupIdcs { group_idcs })
+    }
 }
