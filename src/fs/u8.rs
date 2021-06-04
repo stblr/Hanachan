@@ -31,6 +31,11 @@ impl U8 {
             Some(_) => None,
         }
     }
+
+    pub fn get_file(&self, path: &str) -> Option<&File> {
+        self.get_node(path)
+            .and_then(|node| node.content().as_file())
+    }
 }
 
 impl Parse for U8 {

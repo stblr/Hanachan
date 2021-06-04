@@ -21,9 +21,10 @@ use std::convert::identity;
 use std::iter;
 use std::ops::Add;
 
-use crate::fs::{kmp::Ktpt, Kcl, Rkg, RkgTrick, U8};
+use crate::fs::{Kcl, Rkg, RkgTrick, U8};
 use crate::geom::{Mat33, Vec3};
-use crate::race::{Race, Stage};
+use crate::race::{Stage, Timer};
+use crate::track::Track;
 use crate::wii::F32Ext;
 
 use bike::Bike;
@@ -60,7 +61,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn try_new(common_szs: &U8, ktpt: Ktpt, kcl: &Kcl, rkg: Rkg) -> Option<Player> {
+    pub fn try_new(common_szs: &U8, track: &Track, rkg: Rkg) -> Option<Player> {
         let params = rkg.header().params();
 
         let kart_param = common_szs
@@ -89,7 +90,7 @@ impl Player {
         let path = "./bsp/".to_owned() + params.vehicle().filename() + ".bsp";
         let bsp = common_szs.get_node(&path)?.content().as_file()?.as_bsp()?;
 
-        let physics = Physics::new(bsp, ktpt.pos, kcl);
+        let physics = Physics::new(bsp, track);
 
         let vehicle_body = VehicleBody::new(bsp.hitboxes.clone());
 
@@ -140,7 +141,7 @@ impl Player {
         &self.physics
     }
 
-    pub fn update(&mut self, race: &Race, kcl: &Kcl) {
+    pub fn update(&mut self, kcl: &Kcl, timer: &Timer) {
         self.physics.rot_vec2 = Vec3::ZERO;
 
         let wheel_collision_count = self
@@ -162,9 +163,9 @@ impl Player {
         };
         self.airtime = airtime;
 
-        if race.stage() == Stage::Countdown {
-            self.start_boost.update(self.rkg.accelerate(race.frame()));
-        } else if race.frame() == 411 {
+        if timer.stage() == Stage::Countdown {
+            self.start_boost.update(self.rkg.accelerate(timer.frame_idx()));
+        } else if timer.frame_idx() == 411 {
             self.boost.activate(BoostKind::Weak, self.start_boost.boost_frames());
         }
 
@@ -231,15 +232,15 @@ impl Player {
             self.kcl_rot_factor = kcl_rot_factor_sum / floor_collision_count as f32;
         }
 
-        let frame_idx = race.frame();
+        let frame_idx = timer.frame_idx();
         let stick_x = self.rkg.stick_x(frame_idx);
         self.turn.update(&self.stats.common, stick_x, &self.drift);
 
         let drift_input = self.rkg.drift(frame_idx);
-        let last_drift_input = race
-            .frame()
+        let last_drift_input = timer
+            .frame_idx()
             .checked_sub(1)
-            .map(|last_frame| self.rkg.drift(last_frame))
+            .map(|last_frame_idx| self.rkg.drift(last_frame_idx))
             .unwrap_or(false);
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
         self.drift.update(
@@ -279,20 +280,20 @@ impl Player {
             &self.boost,
             self.turn.raw(),
             is_wheelieing,
-            race,
+            timer,
         );
 
-        self.update_standstill_boost_rot(ground, race);
+        self.update_standstill_boost_rot(ground, timer);
         if let Some(bike) = &mut self.bike {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
 
             bike.lean.update(
-                self.rkg.stick_x(race.frame()),
+                self.rkg.stick_x(timer.frame_idx()),
                 airtime,
                 self.drift.drift_stick_x(),
                 is_wheelieing,
                 &mut self.physics,
-                race,
+                timer,
             );
         } else {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
@@ -315,7 +316,7 @@ impl Player {
 
         self.diving_rot *= 0.96;
         if !ground {
-            let stick_y = self.rkg.stick_y(race.frame());
+            let stick_y = self.rkg.stick_y(timer.frame_idx());
             let diving_rot_diff = if self.airtime > 50 {
                 stick_y
             } else {
@@ -325,7 +326,7 @@ impl Player {
             self.physics.rot_vec2.x += self.diving_rot;
         }
 
-        self.physics.update(&self.stats, race);
+        self.physics.update(&self.stats, timer);
 
         self.vehicle_body.update(&self.stats.common, &mut self.physics, &kcl);
 
@@ -379,22 +380,22 @@ impl Player {
 
         self.physics.update_mat();
 
-        let last_use_item = race
-            .frame()
+        let last_use_item = timer
+            .frame_idx()
             .checked_sub(1)
-            .map(|last_frame| self.rkg.use_item(last_frame))
+            .map(|last_frame_idx| self.rkg.use_item(last_frame_idx))
             .unwrap_or(false);
-        if self.rkg.use_item(race.frame()) && !last_use_item {
+        if self.rkg.use_item(timer.frame_idx()) && !last_use_item {
             self.boost.activate(BoostKind::Strong, 90);
             self.offroad_invicibility = self.offroad_invicibility.max(90);
             self.mushroom_boost = 90;
         }
     }
 
-    fn update_standstill_boost_rot(&mut self, ground: bool, race: &Race) {
+    fn update_standstill_boost_rot(&mut self, ground: bool, timer: &Timer) {
         if !ground {
             self.standstill_boost_rot = 0.0;
-        } else if race.stage() == Stage::Countdown {
+        } else if timer.stage() == Stage::Countdown {
             let inc = 0.015 * -self.start_boost.charge - self.standstill_boost_rot;
             self.standstill_boost_rot += inc;
         } else {

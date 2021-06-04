@@ -1,16 +1,22 @@
+mod error;
 mod fs;
 mod geom;
 mod player;
 mod race;
+mod track;
 mod wii;
 
 use std::arch::x86_64;
 use std::env;
+use std::ffi::OsStr;
 use std::fmt::Debug;
+use std::path::PathBuf;
 
+use crate::error::Error;
 use crate::fs::{yaz, Rkrd, SliceRefExt, U8};
 use crate::player::Player;
 use crate::race::Race;
+use crate::track::Track;
 
 fn main() {
     #[cfg(target_feature = "sse")]
@@ -19,8 +25,8 @@ fn main() {
     }
 
     let args: Vec<String> = env::args().collect();
-    if args.len() != 5 {
-        eprintln!("Usage: hanachan <Common.szs> <track.szs> <ghost.rkg> <dump.rkrd>");
+    if args.len() != 4 {
+        eprintln!("Usage: hanachan <Common.szs> <track.szs> <ghost(s)>");
         return;
     }
 
@@ -46,49 +52,46 @@ fn main() {
         }
     };
 
-    let track = match std::fs::read(&args[2]) {
+    let track = match Track::load(&args[2]) {
         Ok(track) => track,
         Err(_) => {
-            eprintln!("Couldn't open track file");
-            return;
-        }
-    };
-    let mut track: &[u8] = &match yaz::decompress(&track) {
-        Ok(track) => track,
-        Err(_) => {
-            eprintln!("Couldn't decompress track file");
-            return;
-        }
-    };
-    let track: U8 = match track.take() {
-        Ok(track) => track,
-        Err(_) => {
-            eprintln!("Couldn't parse track file");
-            return;
-        }
-    };
-    let kmp = match track
-        .get_node("./course.kmp")
-        .and_then(|node| node.content().as_file().and_then(|file| file.as_kmp()))
-    {
-        Some(kmp) => kmp,
-        None => {
-            eprintln!("Couldn't find kmp");
-            return;
-        }
-    };
-    let kcl = match track
-        .get_node("./course.kcl")
-        .and_then(|node| node.content().as_file().and_then(|file| file.as_kcl()))
-    {
-        Some(kcl) => kcl,
-        None => {
-            eprintln!("Couldn't find kcl");
+            eprintln!("Couldn't load track");
             return;
         }
     };
 
-    let mut rkg: &[u8] = &match std::fs::read(&args[3]) {
+    let metadata = match std::fs::metadata(&args[3]) {
+        Ok(metadata) => metadata,
+        Err(_) => {
+            eprintln!("Couldn't open rkg file or directory");
+            return;
+        }
+    };
+
+    if metadata.is_dir() {
+        let dir = match std::fs::read_dir(&args[3]) {
+            Ok(dir) => dir,
+            Err(_) => {
+                eprintln!("Couldn't open rkg directory");
+                return;
+            }
+        };
+        let mut rkg_paths: Vec<_> = dir
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .filter(|path| path.extension() == Some(OsStr::new("rkg")))
+            .collect();
+        rkg_paths.sort();
+        for rkg_path in rkg_paths {
+            replay_rkg(&common_szs, &track, &rkg_path, false);
+        }
+    } else {
+        replay_rkg(&common_szs, &track, &PathBuf::from(&args[3]), true);
+    }
+}
+
+fn replay_rkg(common_szs: &U8, track: &Track, rkg_path: &PathBuf, verbose: bool) {
+    let mut rkg: &[u8] = &match std::fs::read(rkg_path) {
         Ok(rkg) => rkg,
         Err(_) => {
             eprintln!("Couldn't open rkg");
@@ -103,7 +106,7 @@ fn main() {
         }
     };
 
-    let mut player = match Player::try_new(&common_szs, kmp.ktpt.entries[0], &kcl, rkg) {
+    let player = match Player::try_new(&common_szs, &track, rkg) {
         Some(player) => player,
         None => {
             eprintln!("Couldn't initialize player");
@@ -111,7 +114,8 @@ fn main() {
         }
     };
 
-    let mut rkrd: &[u8] = &match std::fs::read(&args[4]) {
+    let rkrd_path = rkg_path.with_extension("rkrd");
+    let mut rkrd: &[u8] = &match std::fs::read(rkrd_path) {
         Ok(rkrd) => rkrd,
         Err(_) => {
             eprintln!("Couldn't open rkrd");
@@ -126,34 +130,47 @@ fn main() {
         }
     };
 
-    let mut race = Race::new();
+    let mut race = Race::new(&track, player);
     let mut desync = false;
     for frame in rkrd.frames() {
-        player.update(&race, &kcl);
-        let physics = player.physics();
-        desync = check_val("FLOOR_NOR", race.frame(), physics.up, frame.floor_nor) || desync;
-        desync = check_val("DIR", race.frame(), physics.dir, frame.dir) || desync;
-        desync = check_val("POS", race.frame(), physics.pos, frame.pos) || desync;
-        desync = check_val("VEL0", race.frame(), physics.vel0, frame.vel0) || desync;
-        desync = check_val("SPEED1", race.frame(), physics.speed1, frame.speed1) || desync;
-        desync = check_val("VEL", race.frame(), physics.vel, frame.vel) || desync;
-        desync = check_val("ROT_VEC0", race.frame(), physics.rot_vec0, frame.rot_vec0) || desync;
-        desync = check_val("ROT_VEC2", race.frame(), physics.rot_vec2, frame.rot_vec2) || desync;
-        desync = check_val("ROT0", race.frame(), physics.rot0, frame.rot0) || desync;
-        desync = check_val("ROT1", race.frame(), physics.rot1, frame.rot1) || desync;
+        race.update();
+
+        let physics = race.player().physics();
+        check_val("up", physics.up, frame.floor_nor, &mut desync, verbose);
+        check_val("dir", physics.dir, frame.dir, &mut desync, verbose);
+        check_val("pos", physics.pos, frame.pos, &mut desync, verbose);
+        check_val("vel0", physics.vel0, frame.vel0, &mut desync, verbose);
+        check_val("speed1", physics.speed1, frame.speed1, &mut desync, verbose);
+        check_val("vel", physics.vel, frame.vel, &mut desync, verbose);
+        check_val("rot_vec0", physics.rot_vec0, frame.rot_vec0, &mut desync, verbose);
+        check_val("rot_vec2", physics.rot_vec2, frame.rot_vec2, &mut desync, verbose);
+        check_val("rot0", physics.rot0, frame.rot0, &mut desync, verbose);
+        check_val("rot1", physics.rot1, frame.rot1, &mut desync, verbose);
+
         if desync {
             break;
         }
-        race.update();
+    }
+
+    if let Some(run_name) = rkg_path.file_stem().and_then(|run_name| run_name.to_str()) {
+        println!("{}: {} / {}", run_name, race.frame_idx() - 1, rkrd.frames().len());
     }
 }
 
-fn check_val<T: Debug + PartialEq>(name: &str, frame: u32, actual: T, expected: T) -> bool {
-    let desync = actual != expected;
-    if desync {
-        println!("{} {}", name, frame);
-        println!("{:?}", actual);
-        println!("{:?}", expected);
+fn check_val<T: Debug + PartialEq>(
+    name: &str,
+    actual: T,
+    expected: T,
+    desync: &mut bool,
+    verbose: bool,
+) {
+    if actual != expected {
+        if verbose {
+            println!("{}", name);
+            println!("{:?}", actual);
+            println!("{:?}", expected);
+        }
+
+        *desync = true;
     }
-    desync
 }

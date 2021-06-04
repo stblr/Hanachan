@@ -1,6 +1,6 @@
 use crate::geom::{Mat33, Vec3};
 use crate::player::Physics;
-use crate::race::{Race, Stage};
+use crate::race::{Stage, Timer};
 
 #[derive(Clone, Debug)]
 pub struct Lean {
@@ -31,9 +31,9 @@ impl Lean {
         drift_stick_x: Option<f32>,
         is_wheelieing: bool,
         physics: &mut Physics,
-        race: &Race,
+        timer: &Timer,
     ) {
-        if physics.speed1.abs() >= 5.0 && race.stage() == Stage::Race {
+        if physics.speed1.abs() >= 5.0 && timer.stage() == Stage::Race {
             self.rot_diff += 0.3 * (self.rot_inc() - self.rot_diff);
             self.rot_cap += 0.3 * (1.0 - self.rot_cap);
         }

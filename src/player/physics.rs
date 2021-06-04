@@ -2,10 +2,11 @@ use std::convert::identity;
 use std::iter;
 use std::ops::Add;
 
-use crate::fs::{Bsp, Kcl};
+use crate::fs::Bsp;
 use crate::geom::{Hitbox, Mat33, Mat34, Quat, Vec3};
 use crate::player::{Boost, Drift, Stats, VehicleBody, Wheel};
-use crate::race::{Race, Stage};
+use crate::race::{Stage, Timer};
+use crate::track::Track;
 
 #[derive(Clone, Debug)]
 pub struct Physics {
@@ -35,7 +36,7 @@ pub struct Physics {
 }
 
 impl Physics {
-    pub fn new(bsp: &Bsp, ktpt_pos: Vec3, kcl: &Kcl) -> Physics {
+    pub fn new(bsp: &Bsp, track: &Track) -> Physics {
         let masses = [1.0 / 12.0, 1.0];
         let inertia_tensor = masses
             .iter()
@@ -57,12 +58,13 @@ impl Physics {
         );
         let inv_inertia_tensor = Mat34::from_diag(inv_inertia_tensor);
 
+        let ktpt_pos = track.kmp().ktpt.entries[0].pos; // TODO bounds check
         let diff0 = Vec3::new(-800.0, 0.0, 461.87988);
         let diff1 = Vec3::new(800.0, 0.0, -461.87991);
         let mut pos = ktpt_pos + diff0 + diff1;
 
         let hitbox = Hitbox::new(pos, 100.0);
-        if let Some(collision) = kcl.check_collision(hitbox) {
+        if let Some(collision) = track.kcl().check_collision(hitbox) {
             pos = pos + collision.movement - 100.0 * collision.floor_nor;
             pos += bsp.initial_pos_y * collision.floor_nor;
         }
@@ -200,11 +202,11 @@ impl Physics {
         boost: &Boost,
         raw_turn: f32,
         is_wheelieing: bool,
-        race: &Race,
+        timer: &Timer,
     ) {
         let last_speed_ratio = (self.speed1 / stats.common.base_speed).min(1.0);
 
-        if !is_drifting && race.stage() == Stage::Race {
+        if !is_drifting && timer.stage() == Stage::Race {
             self.speed1 += self.speed1_adj;
         }
 
@@ -217,7 +219,7 @@ impl Physics {
             }
         } else if let Some(boost_acceleration) = boost.acceleration() {
             acceleration = boost_acceleration;
-        } else if race.stage() == Stage::Race {
+        } else if timer.stage() == Stage::Race {
             let (ys, xs): (&[f32], &[f32]) = if is_drifting {
                 (&stats.common.drift_acceleration_ys, &stats.common.drift_acceleration_xs)
             } else {
@@ -265,8 +267,8 @@ impl Physics {
         }
     }
 
-    pub fn update(&mut self, stats: &Stats, race: &Race) {
-        if race.stage() != Stage::Race {
+    pub fn update(&mut self, stats: &Stats, timer: &Timer) {
+        if timer.stage() != Stage::Race {
             if stats.vehicle.drift_kind.is_bike() {
                 self.vel0 = self.vel0.rej_unit(self.smoothed_up);
             } else {
