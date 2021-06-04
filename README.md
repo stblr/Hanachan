@@ -4,7 +4,7 @@ A reimplementation of the physics engine of Mario Kart Wii, aiming for perfectly
 
 ## Status
 
-At the moment, it is possible to replay the rMC3 WR for 5080 frames (until the end of the race but without the final slowdown after the finish line).
+See [STATUS.md](STATUS.md).
 
 ## May 2021 roadmap
 
