@@ -74,6 +74,7 @@ impl Parse for Octree {
             let offset = offset & !0x80000000;
             let offset = offset + parent_offset;
             if is_leaf {
+                let offset = offset + 0x2;
                 *tri_lists_offset = (*tri_lists_offset).min(offset);
                 Ok(RawNode::Leaf { offset })
             } else if offset % 0x4 == 0 {
@@ -91,7 +92,7 @@ impl Parse for Octree {
                 }
 
                 let node = parse_node(&mut input, &mut nodes_size, &mut tri_lists_offset, 0);
-                if let Ok(RawNode::Branch { offset }) = node {
+                if let Ok(RawNode::Leaf { offset }) | Ok(RawNode::Branch { offset }) = node {
                     root_node_count = root_node_count.min(offset / 0x4);
                 }
                 Some(node)
@@ -99,6 +100,7 @@ impl Parse for Octree {
             .collect::<Result<_, _>>()?;
 
         let branches_offset = 0x4 * root_node_count;
+        nodes_size = nodes_size.max(branches_offset);
         let branches: Vec<_> = (0..)
             .scan((), |(), branch_idx| {
                 let branch_count = (nodes_size - branches_offset) / 0x20;
@@ -123,11 +125,11 @@ impl Parse for Octree {
             })
             .collect::<Result<_, _>>()?;
 
-        let mut tri_list_offset = tri_lists_offset + 0x2;
-        if nodes_size != tri_list_offset {
+        if nodes_size != tri_lists_offset {
             return Err(Error {});
         }
 
+        let mut tri_list_offset = tri_lists_offset;
         let mut tri_lists: Vec<_> = iter::from_fn(|| {
             if input.is_empty() {
                 None
@@ -206,7 +208,7 @@ impl Node {
     ) -> Result<Node, Error> {
         match raw {
             RawNode::Leaf { offset } => {
-                let offset = offset + 0x2;
+                let offset = offset;
                 let idx = tri_lists
                     .iter()
                     .position(|tri_list| tri_list.offset == offset)
