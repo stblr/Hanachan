@@ -65,7 +65,7 @@ impl Physics {
 
         let hitbox = Hitbox::new(pos, 100.0);
         if let Some(collision) = track.kcl().check_collision(hitbox) {
-            pos = pos + collision.movement - 100.0 * collision.floor_nor;
+            pos = pos + (collision.min + collision.max) - 100.0 * collision.floor_nor;
             pos += bsp.initial_pos_y * collision.floor_nor;
         }
 
@@ -357,7 +357,14 @@ impl Physics {
         self.mat = Mat34::from_quat_and_pos(self.rot1, self.pos);
     }
 
-    pub fn apply_rigid_body_motion(&mut self, pos_rel: Vec3, vel: Vec3, floor_nor: Vec3) {
+    pub fn apply_rigid_body_motion(
+        &mut self,
+        is_boosting: bool,
+        pos_rel: Vec3,
+        vel: Vec3,
+        floor_nor: Vec3,
+    ) {
+        let floor_nor = floor_nor.normalize();
         let dot = vel.dot(floor_nor);
         if dot >= 0.0 {
             return;
@@ -367,13 +374,17 @@ impl Physics {
         let mat = Mat33::from(mat * self.inv_inertia_tensor * mat.transpose());
         let cross = mat * pos_rel.cross(floor_nor);
         let cross = cross.cross(pos_rel);
-        let val = -dot / (1.0 + floor_nor.dot(cross));
+        let s = if is_boosting { 1.0 } else { 1.0 + 0.05 };
+        let val = (-dot * s) / (1.0 + floor_nor.dot(cross));
         let cross = floor_nor.cross(-vel);
         let cross = cross.cross(floor_nor);
         let cross = cross.normalize();
         let other_val = val * vel.dot(cross) / dot;
         let other_val = other_val.signum() * other_val.abs().min(0.01 * val);
         let sum = val * floor_nor + other_val * cross;
+        if self.vel1.y > 0.0 && self.vel0.y + self.vel1.y < 0.0 {
+            self.vel0.y += self.vel1.y;
+        }
         let last_vel0_y = self.vel0.y;
         self.vel0 += sum;
         if last_vel0_y < 0.0 && self.vel0.y > 0.0 && self.vel0.y < 10.0 {

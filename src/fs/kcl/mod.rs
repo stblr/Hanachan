@@ -45,7 +45,8 @@ impl Kcl {
 
         if found {
             Some(Collision {
-                movement: min + max,
+                min,
+                max,
                 floor_dist,
                 floor_nor,
                 closest_kind,
@@ -95,7 +96,8 @@ impl Parse for Kcl {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Collision {
-    pub movement: Vec3,
+    pub min: Vec3,
+    pub max: Vec3,
     pub floor_dist: f32,
     pub floor_nor: Vec3,
     pub closest_kind: u8,

@@ -30,7 +30,13 @@ impl VehicleBody {
         self.has_floor_collision
     }
 
-    pub fn update(&mut self, stats: &CommonStats, physics: &mut Physics, kcl: &Kcl) {
+    pub fn update(
+        &mut self,
+        stats: &CommonStats,
+        is_boosting: bool,
+        physics: &mut Physics,
+        kcl: &Kcl,
+    ) {
         let mut count = 0;
         let (mut min, mut max) = (Vec3::ZERO, Vec3::ZERO);
         let mut floor_nor = Vec3::ZERO;
@@ -46,8 +52,8 @@ impl VehicleBody {
                 if let Some(collision) = kcl.check_collision(hitbox) {
                     count += 1;
 
-                    min = min.min(collision.movement);
-                    max = max.max(collision.movement);
+                    min = min.min(collision.min);
+                    max = max.max(collision.max);
 
                     floor_nor += collision.floor_nor;
                     let closest_kind = collision.closest_kind as usize;
@@ -57,7 +63,7 @@ impl VehicleBody {
                     rot_factor += hitbox_rot_factor;
                     has_boost_panel = has_boost_panel || collision.all_kinds & 0x40 != 0;
 
-                    let nor = collision.movement.normalize();
+                    let nor = (collision.min + collision.max).normalize();
                     pos_rel = pos_rel + hitbox_pos_rel - bsp_hitbox.radius * nor;
                 }
             }
@@ -87,7 +93,7 @@ impl VehicleBody {
                 vel.y += physics.vel1.y;
             }
 
-            physics.apply_rigid_body_motion(pos_rel, vel, floor_nor);
+            physics.apply_rigid_body_motion(is_boosting, pos_rel, vel, floor_nor);
         } else {
             self.collision = None;
         }

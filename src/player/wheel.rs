@@ -76,7 +76,7 @@ impl Wheel {
         self.hitbox_pos_rel = hitbox_pos - physics.pos;
         let collision = kcl.check_collision(hitbox);
         if let Some(collision) = collision {
-            self.pos += collision.movement;
+            self.pos += collision.min + collision.max;
         }
         self.hitbox_radius = bsp_wheel.hitbox_radius;
 

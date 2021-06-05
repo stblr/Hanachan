@@ -328,7 +328,12 @@ impl Player {
 
         self.physics.update(&self.stats, timer);
 
-        self.vehicle_body.update(&self.stats.common, &mut self.physics, &kcl);
+        self.vehicle_body.update(
+            &self.stats.common,
+            self.boost.is_boosting(),
+            &mut self.physics,
+            &kcl,
+        );
 
         let mut count = 0;
         let (mut min, mut max) = (Vec3::ZERO, Vec3::ZERO);
@@ -363,7 +368,7 @@ impl Player {
             let pos_rel = (1.0 / count as f32) * pos_rel;
             let vel = (1.0 / count as f32) * vel;
             let floor_nor = floor_nor.normalize();
-            self.physics.apply_rigid_body_motion(pos_rel, vel, floor_nor);
+            self.physics.apply_rigid_body_motion(self.boost.is_boosting(), pos_rel, vel, floor_nor);
             self.vehicle_body.override_collision(Collision {
                 floor_nor,
                 speed_factor: 1.0,
