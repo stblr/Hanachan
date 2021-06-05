@@ -41,7 +41,7 @@ See [STATUS.md](STATUS.md).
   - [x] Slipdrifts
 - [ ] CLI overhaul
   - [ ] Make RKRD optional
-  - [ ] Multiple runs
+  - [x] Multiple runs
   - [ ] Configurable output
 - [ ] 3D renderer
   - [ ] Collision (KCL/BSP) view
