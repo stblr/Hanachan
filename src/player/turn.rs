@@ -18,8 +18,12 @@ impl Turn {
         self.raw
     }
 
-    pub fn update(&mut self, stats: &CommonStats, stick_x: f32, drift: &Drift) {
-        let stick_x = drift.hop_stick_x().unwrap_or(stick_x);
+    pub fn update(&mut self, stats: &CommonStats, airtime: u32, stick_x: f32, drift: &Drift) {
+        let stick_x = match drift.hop_stick_x() {
+            Some(hop_stick_x) => hop_stick_x,
+            None if airtime > 20 => 0.01 * stick_x,
+            None => stick_x,
+        };
         let reactivity = if drift.is_drifting() {
             stats.drift_reactivity
         } else {

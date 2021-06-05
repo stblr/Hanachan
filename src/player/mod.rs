@@ -234,7 +234,7 @@ impl Player {
 
         let frame_idx = timer.frame_idx();
         let stick_x = self.rkg.stick_x(frame_idx);
-        self.turn.update(&self.stats.common, stick_x, &self.drift);
+        self.turn.update(&self.stats.common, airtime, stick_x, &self.drift);
 
         let drift_input = self.rkg.drift(frame_idx);
         let last_drift_input = timer

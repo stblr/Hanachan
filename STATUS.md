@@ -4,10 +4,10 @@ Run          | Frames      | Desync reason
 :----------- | :---------: | :-----------------------------------------
 lc-rta-0-i   | 653 / 4677  | Weird collision with the edge of the road.
 lc-rta-0-k   | 581 / 4904  | Collision related.
-lc-tas-0-i   | 411 / 4299  | Turn rotation on race start.
+lc-tas-0-i   | 662 / 4299  | Collision related.
 mmm-rta-0-i  | 1140 / 5079 | Wrong direction when bouncing over the grass.
 mmm-rta-0-k  | 916 / 5311  | Collision related.
-mmm-tas-0-i  | 411 / 4880  | Turn rotation on race start.
+mmm-tas-0-i  | 1246 / 4880 | Wheelie cancellation.
 mg-rta-0-i   | 821 / 6593  | Ramp collision.
 mg-rta-1-i   | 542 / 1772  | Drift cancellation.
 mg-rta-2-i   | 818 / 6593  | Ramp collision.
@@ -19,7 +19,7 @@ tf-tas-0-i   | 737 / 6306  | Conveyor speed (kcl + object).
 mc-rta-0-i   | 757 / 5371  | Weird collision with the edge of the road.
 mc-rta-1-i   | 217 / 3415  | Wheelie cancellation.
 mc-rta-0-k   | 465 / 5669  | Collision related.
-mc-tas-0-i   | 411 / 5229  | Turn rotation on race start.
+mc-tas-0-i   | 747 / 5229  | Collision related.
 cm-rta-0-i   | 546 / 6692  | Collision related.
 cm-rta-1-i   | 178 / 2441  | Collision related.
 cm-rta-2-i   | 568 / 7482  | Air physics.
