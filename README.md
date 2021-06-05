@@ -60,9 +60,29 @@ See [STATUS.md](STATUS.md).
 * Graphics reimplementation using Vulkan
 * Full game reimplementation (maybe)
 
-## Running the program
+## Building
 
-Two files have to be supplied as cli arguments: a ghost file in the rkg format, and a race dump file in the custom rkrd format, which contains important physics variables for each frame. The program replays the ghost and compares it to the dump, and as soon as there is a difference for any of the variables, it is printed and the execution is stopped. Sample files are provided in the data directory.
+Install the latest version of Rust, then run:
+
+```bash
+cargo build --release
+```
+
+## Running
+
+Make a copy of your Mario Kart Wii disc with e.g. [CleanRip](https://wiibrew.org/wiki/CleanRip).
+
+Extract `Common.szs` and the `Course` directory with e.g. [Dolphin](https://github.com/dolphin-emu/dolphin) or [WIT](https://wit.wiimm.de/).
+
+Then run:
+
+```bash
+./target/release/hanachan Common.szs Course samples
+```
+
+Every ghost in the `samples` directory will be replayed and compared to a dump of the most important physics variables. The number of accurate frames will then be printed.
+
+It is also possible to supply a single ghost file for more detailed output, or a single track file.
 
 ## Contributing
 
