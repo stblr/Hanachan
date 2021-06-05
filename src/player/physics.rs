@@ -134,12 +134,14 @@ impl Physics {
                 self.up = Vec3::UP;
             } else {
                 self.up += 0.03 * (Vec3::UP - self.up);
+                self.up = self.up.normalize();
             }
 
             if self.smoothed_up.y > 0.99 {
                 self.smoothed_up = Vec3::UP;
             } else {
                 self.smoothed_up += 0.03 * (Vec3::UP - self.smoothed_up);
+                self.smoothed_up = self.smoothed_up.normalize();
             }
         } else if airtime == 0 {
             self.up = next_up;
