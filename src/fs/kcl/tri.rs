@@ -52,6 +52,12 @@ impl Tri {
     }
 
     pub fn check_collision(&self, thickness: f32, hitbox: Hitbox) -> Option<Collision> {
+        fn ps_dot(v0: Vec3, v1: Vec3) -> f32 {
+            let y = v0.y * v1.y;
+            let xy = ((v0.x as f64 * v1.x as f64) + y as f64) as f32;
+            xy + v0.z * v1.z
+        }
+
         if 1 << (self.flags & 0x1f) & 0x20e80fff == 0 {
             return None;
         }
@@ -59,22 +65,22 @@ impl Tri {
         let pos = hitbox.pos - self.pos;
         let radius = hitbox.radius;
 
-        let ca_dist = pos.dot(self.ca_nor);
+        let ca_dist = ps_dot(pos, self.ca_nor);
         if ca_dist >= radius {
             return None;
         }
 
-        let ab_dist = pos.dot(self.ab_nor);
+        let ab_dist = ps_dot(pos, self.ab_nor);
         if ab_dist >= radius {
             return None;
         }
 
-        let bc_dist = pos.dot(self.bc_nor) - self.altitude;
+        let bc_dist = ps_dot(pos, self.bc_nor) - self.altitude;
         if bc_dist >= radius {
             return None;
         }
 
-        let plane_dist = pos.dot(self.plane_nor);
+        let plane_dist = ps_dot(pos, self.plane_nor);
         let dist_in_plane = radius - plane_dist;
         if dist_in_plane <= 0.0 || dist_in_plane >= thickness {
             return None;
@@ -122,7 +128,7 @@ impl Tri {
             }
         }
 
-        let cos = edge_nor.dot(other_edge_nor);
+        let cos = ps_dot(edge_nor, other_edge_nor);
         let sq_dist = if cos * edge_dist > other_edge_dist {
             radius * radius - edge_dist * edge_dist
         } else {
