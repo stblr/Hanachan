@@ -16,6 +16,20 @@ tf-rta-0-i   | 742 / 6816  | Conveyor speed (kcl + object).
 tf-rta-2-i   | 690 / 7103  | Conveyor speed (kcl + object).
 tf-rta-2-k   | 648 / 7452  | Collision related.
 tf-tas-0-i   | 737 / 6306  | Conveyor speed (kcl + object).
+mc-rta-0-i   | 757 / 5371  | Weird collision with the edge of the road.
+mc-rta-1-i   | 217 / 3415  | Wheelie cancellation.
+mc-rta-0-k   | 465 / 5669  | Collision related.
+mc-tas-0-i   | 411 / 5229  | Turn rotation on race start.
+cm-rta-0-i   | 546 / 6692  | Collision related.
+cm-rta-1-i   | 178 / 2441  | Collision related.
+cm-rta-2-i   | 568 / 7482  | Air physics.
+cm-rta-2-k   | 563 / 7762  | Collision related.
+dksc-rta-0-i | 0 / 6864    | Initial direction.
+dksc-rta-0-k | 0 / 7249    | Initial direction.
+dksc-tas-0-i | 0 / 6166    | Initial direction.
+wgm-rta-0-i  | 508 / 7183  | Collision related.
+wgm-rta-1-i  | 431 / 2466  | Braking.
+wgm-rta-0-k  | 489 / 7501  | Collision related.
 rmc3-rta-0-i | 5080 / 5223 | Race end detection.
 rmc3-rta-0-k | 5147 / 5290 | Race end detection.
 rmc3-rta-0-o | 5311 / 5454 | Race end detection.
