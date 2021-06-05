@@ -2,6 +2,7 @@ use std::iter;
 
 use crate::fs::{yaz, Bits, Error, Parse, ResultExt, SliceExt, SliceRefExt};
 use crate::player::Params;
+use crate::track::Id as TrackId;
 
 #[derive(Clone, Debug)]
 pub struct Rkg {
@@ -88,22 +89,16 @@ impl Parse for Rkg {
 
 #[derive(Clone, Debug)]
 pub struct Header {
-    time: Time,
-    track: u8,
-    params: Params,
-    year: u16,
-    month: u8,
-    day: u8,
-    controller: u8,
-    compressed: bool,
-    lap_count: u8,
-    lap_times: Vec<Time>,
-}
-
-impl Header {
-    pub fn params(&self) -> &Params {
-        &self.params
-    }
+    pub time: Time,
+    pub track_id: TrackId,
+    pub params: Params,
+    pub year: u16,
+    pub month: u8,
+    pub day: u8,
+    pub controller: u8,
+    pub compressed: bool,
+    pub lap_count: u8,
+    pub lap_times: Vec<Time>,
 }
 
 impl Parse for Header {
@@ -115,7 +110,8 @@ impl Parse for Header {
         let time = input.take::<Time>()?;
 
         let mut bits = Bits::new(input);
-        let track = bits.take_u8(6).filter(|track| *track < 32)?;
+        let track_id = bits.take_u8(6)?;
+        let track_id = TrackId::try_from_raw(track_id).ok_or(Error {})?;
         let _padding = bits.take_u8(2)?;
 
         let vehicle_id = bits.take_u8(6)?;
@@ -161,7 +157,7 @@ impl Parse for Header {
 
         Ok(Header {
             time,
-            track,
+            track_id,
             params,
             year,
             month,
@@ -175,7 +171,7 @@ impl Parse for Header {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Time {
+pub struct Time {
     minutes: u8,
     seconds: u8,
     milliseconds: u16,

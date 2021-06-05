@@ -4,6 +4,7 @@ mod geom;
 mod player;
 mod race;
 mod track;
+mod tracks;
 mod wii;
 
 use std::arch::x86_64;
@@ -13,10 +14,10 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 use crate::error::Error;
-use crate::fs::{yaz, Rkrd, SliceRefExt, U8};
+use crate::fs::{yaz, Rkg, Rkrd, SliceRefExt, U8};
 use crate::player::Player;
 use crate::race::Race;
-use crate::track::Track;
+use crate::tracks::Tracks;
 
 fn main() {
     #[cfg(target_feature = "sse")]
@@ -26,7 +27,7 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
     if args.len() != 4 {
-        eprintln!("Usage: hanachan <Common.szs> <track.szs> <ghost(s)>");
+        eprintln!("Usage: hanachan <Common.szs> <track(s)> <ghost(s)>");
         return;
     }
 
@@ -52,10 +53,10 @@ fn main() {
         }
     };
 
-    let track = match Track::load(&args[2]) {
-        Ok(track) => track,
+    let mut tracks = match Tracks::try_new(&args[2]) {
+        Ok(tracks) => tracks,
         Err(_) => {
-            eprintln!("Couldn't load track");
+            eprintln!("Couldn't load track file or directory");
             return;
         }
     };
@@ -67,7 +68,6 @@ fn main() {
             return;
         }
     };
-
     if metadata.is_dir() {
         let dir = match std::fs::read_dir(&args[3]) {
             Ok(dir) => dir,
@@ -83,14 +83,14 @@ fn main() {
             .collect();
         rkg_paths.sort();
         for rkg_path in rkg_paths {
-            replay_rkg(&common_szs, &track, &rkg_path, false);
+            replay_rkg(&common_szs, &mut tracks, &rkg_path, false);
         }
     } else {
-        replay_rkg(&common_szs, &track, &PathBuf::from(&args[3]), true);
+        replay_rkg(&common_szs, &mut tracks, &PathBuf::from(&args[3]), true);
     }
 }
 
-fn replay_rkg(common_szs: &U8, track: &Track, rkg_path: &PathBuf, verbose: bool) {
+fn replay_rkg(common_szs: &U8, tracks: &mut Tracks, rkg_path: &PathBuf, verbose: bool) {
     let mut rkg: &[u8] = &match std::fs::read(rkg_path) {
         Ok(rkg) => rkg,
         Err(_) => {
@@ -98,10 +98,18 @@ fn replay_rkg(common_szs: &U8, track: &Track, rkg_path: &PathBuf, verbose: bool)
             return;
         }
     };
-    let rkg = match rkg.take() {
+    let rkg: Rkg = match rkg.take() {
         Ok(rkg) => rkg,
         Err(_) => {
             eprintln!("Couldn't parse rkg");
+            return;
+        }
+    };
+
+    let track = match tracks.get(rkg.header().track_id) {
+        Ok(track) => track,
+        Err(_) => {
+            eprintln!("Couldn't load track");
             return;
         }
     };

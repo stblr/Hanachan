@@ -62,7 +62,7 @@ pub struct Player {
 
 impl Player {
     pub fn try_new(common_szs: &U8, track: &Track, rkg: Rkg) -> Option<Player> {
-        let params = rkg.header().params();
+        let params = rkg.header().params;
 
         let kart_param = common_szs
             .get_node("./kartParam.bin")?
