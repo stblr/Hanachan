@@ -7,7 +7,6 @@ mod track;
 mod tracks;
 mod wii;
 
-use std::arch::x86_64;
 use std::env;
 use std::ffi::OsStr;
 use std::fmt::Debug;
@@ -20,10 +19,7 @@ use crate::race::Race;
 use crate::tracks::Tracks;
 
 fn main() {
-    #[cfg(target_feature = "sse")]
-    unsafe {
-        x86_64::_MM_SET_FLUSH_ZERO_MODE(x86_64::_MM_FLUSH_ZERO_ON);
-    }
+    enable_flushing_denormals_to_zero();
 
     let args: Vec<String> = env::args().collect();
     if args.len() != 4 {
@@ -87,6 +83,18 @@ fn main() {
         }
     } else {
         replay_rkg(&common_szs, &mut tracks, &PathBuf::from(&args[3]), true);
+    }
+}
+
+fn enable_flushing_denormals_to_zero() {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    unsafe {
+        #[cfg(target_arch = "x86")]
+        use std::arch::x86::*;
+        #[cfg(target_arch = "x86_64")]
+        use std::arch::x86_64::*;
+
+        _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
     }
 }
 
