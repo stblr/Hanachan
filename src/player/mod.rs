@@ -195,7 +195,7 @@ impl Player {
             self.offroad_invicibility = self.offroad_invicibility.max(60);
         }
 
-        self.physics.update_dir(self.airtime, self.kcl_rot_factor, &self.drift);
+        self.physics.update_dir(self.airtime, is_landing, self.kcl_rot_factor, &self.drift);
 
         let kcl_speed_factor_min = self
             .wheels

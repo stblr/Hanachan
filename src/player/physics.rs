@@ -7,6 +7,7 @@ use crate::geom::{Hitbox, Mat33, Mat34, Quat, Vec3};
 use crate::player::{Boost, Drift, Stats, VehicleBody, Wheel};
 use crate::race::{Stage, Timer};
 use crate::track::Track;
+use crate::wii::F32Ext;
 
 #[derive(Clone, Debug)]
 pub struct Physics {
@@ -18,6 +19,7 @@ pub struct Physics {
     pub dir: Vec3,
     pub dir_diff: Vec3,
     pub vel1_dir: Vec3,
+    pub landing_angle: f32,
     pub pos: Vec3,
     pub normal_acceleration: f32,
     pub vel0: Vec3,
@@ -78,6 +80,7 @@ impl Physics {
             dir: Vec3::BACK,
             dir_diff: Vec3::ZERO,
             vel1_dir: Vec3::BACK,
+            landing_angle: 0.0,
             pos,
             normal_acceleration: 0.0,
             vel0: Vec3::ZERO,
@@ -125,8 +128,8 @@ impl Physics {
         if is_landing {
             self.up = next_up;
             self.smoothed_up = self.up;
-            self.dir_diff = self.dir.perp_in_plane(self.smoothed_up, true);
-            self.dir_diff = self.dir_diff.proj_unit(self.dir_diff);
+            let landing_dir = self.dir.perp_in_plane(self.smoothed_up, true);
+            self.dir_diff = landing_dir.proj_unit(landing_dir);
         } else if has_hop_height {
             self.stabilization_factor = if is_inside_drift { 0.22 } else { 0.5 };
         } else if airtime > 20 {
@@ -163,17 +166,26 @@ impl Physics {
         }
     }
 
-    pub fn update_dir(&mut self, airtime: u32, kcl_rot_factor: f32, drift: &Drift) {
+    pub fn update_dir(
+        &mut self,
+        airtime: u32,
+        is_landing: bool,
+        kcl_rot_factor: f32,
+        drift: &Drift,
+    ) {
         if airtime > 5 {
             self.vel1_dir = self.dir;
             return;
         }
 
+        let landing_dir = self.dir.perp_in_plane(self.smoothed_up, true);
+
         let next_dir = drift.hop_dir().unwrap_or_else(|| {
             let right = self.rot0.rotate(Vec3::RIGHT);
             right.cross(self.smoothed_up).normalize()
         });
-        let angle = drift.outside_drift_angle().to_radians();
+        let angle = self.landing_angle + drift.outside_drift_angle();
+        let angle = angle.to_radians();
         let mat = Mat33::from(Mat34::from_axis_angle(self.smoothed_up, angle));
         let next_dir = mat * next_dir;
         let next_dir = next_dir.perp_in_plane(self.smoothed_up, true);
@@ -193,6 +205,19 @@ impl Physics {
             }
         }
         self.vel1_dir = self.dir.perp_in_plane(self.smoothed_up, true);
+
+        if is_landing {
+            let cross = self.dir.cross(landing_dir);
+            let norm = cross.sq_norm().wii_sqrt();
+            let dot = self.dir.dot(landing_dir);
+            let angle = norm.wii_atan2(dot).abs().to_degrees();
+            self.landing_angle += angle * cross.dot(self.smoothed_up).signum();
+        }
+        if self.landing_angle < 0.0 {
+            self.landing_angle = (self.landing_angle + 2.0).min(0.0);
+        } else {
+            self.landing_angle = (self.landing_angle - 2.0).max(0.0);
+        }
     }
 
     pub fn update_vel1(

@@ -5,7 +5,7 @@ Run          | Frames      | Desync reason
 lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 4761 / 4904 | Race end detection.
 lc-tas-0-i   | 821 / 4299  | Vel1 direction on supergrind start.
-mmm-rta-0-i  | 1140 / 5079 | Wrong direction when bouncing over the grass.
+mmm-rta-0-i  | 1565 / 5079 | Ramp collision.
 mmm-rta-0-k  | 1669 / 5311 | Wrong direction after bounce.
 mmm-tas-0-i  | 1259 / 4880 | Vel1 direction on rfh start.
 mg-rta-0-i   | 821 / 6593  | Ramp collision.
@@ -18,11 +18,11 @@ tf-rta-2-k   | 761 / 7452  | Conveyor speed (kcl + object).
 tf-tas-0-i   | 737 / 6306  | Conveyor speed (kcl + object).
 mc-rta-0-i   | 1222 / 5371 | Ramp collision.
 mc-rta-1-i   | 217 / 3415  | Wheelie cancellation.
-mc-rta-0-k   | 5041 / 5669 | Direction related.
+mc-rta-0-k   | 5526 / 5669 | Race end detection.
 mc-tas-0-i   | 907 / 5229  | Wrong direction when interacting with the edge of the road.
 cm-rta-0-i   | 640 / 6692  | Escalator speed (kcl + object).
 cm-rta-1-i   | 178 / 2441  | Collision related.
-cm-rta-2-i   | 587 / 7482  | Wrong direction when landing.
+cm-rta-2-i   | 637 / 7482  | Escalator speed (kcl + object).
 cm-rta-2-k   | 563 / 7762  | Collision related.
 dksc-rta-0-i | 0 / 6864    | Initial direction.
 dksc-rta-0-k | 0 / 7249    | Initial direction.
