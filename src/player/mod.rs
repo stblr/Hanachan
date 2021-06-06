@@ -312,7 +312,13 @@ impl Player {
             self.physics.rot_vec0.z += self.stats.common.tilt_factor * norm * self.turn.raw().abs();
         }
 
-        self.turn.update_rot(&self.stats.common, &self.drift, is_wheelieing, &mut self.physics);
+        self.turn.update_rot(
+            &self.stats.common,
+            self.airtime,
+            &self.drift,
+            is_wheelieing,
+            &mut self.physics,
+        );
 
         self.diving_rot *= 0.96;
         if !ground {

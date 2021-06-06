@@ -16,13 +16,13 @@ tf-rta-0-i   | 742 / 6816  | Conveyor speed (kcl + object).
 tf-rta-2-i   | 690 / 7103  | Conveyor speed (kcl + object).
 tf-rta-2-k   | 761 / 7452  | Conveyor speed (kcl + object).
 tf-tas-0-i   | 737 / 6306  | Conveyor speed (kcl + object).
-mc-rta-0-i   | 1207 / 5371 | Turn rotation during airtime.
+mc-rta-0-i   | 1222 / 5371 | Ramp collision.
 mc-rta-1-i   | 217 / 3415  | Wheelie cancellation.
 mc-rta-0-k   | 465 / 5669  | Collision related.
 mc-tas-0-i   | 907 / 5229  | Wrong direction when interacting with the edge of the road.
-cm-rta-0-i   | 578 / 6692  | Turn rotation during airtime.
+cm-rta-0-i   | 626 / 6692  | Wheelie cancellation.
 cm-rta-1-i   | 178 / 2441  | Collision related.
-cm-rta-2-i   | 578 / 7482  | Turn rotation during airtime.
+cm-rta-2-i   | 587 / 7482  | Wrong direction when landing.
 cm-rta-2-k   | 563 / 7762  | Collision related.
 dksc-rta-0-i | 0 / 6864    | Initial direction.
 dksc-rta-0-k | 0 / 7249    | Initial direction.

@@ -42,6 +42,7 @@ impl Turn {
     pub fn update_rot(
         &self,
         stats: &CommonStats,
+        airtime: u32,
         drift: &Drift,
         is_wheelieing: bool,
         physics: &mut Physics,
@@ -67,6 +68,12 @@ impl Turn {
                 0.5 * rot
             };
         }
+
+        rot = match airtime {
+            0..=29 => rot,
+            30..=70 => ((1.0 - 0.025 * (airtime - 30) as f32) * rot).max(0.0),
+            _ => 0.0,
+        };
 
         if is_wheelieing {
             rot *= 0.2;
