@@ -301,17 +301,21 @@ impl Player {
         } else {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
 
-            let mat = self.physics.mat();
-            let front = Mat33::from(mat) * Vec3::FRONT;
-            let front = front.perp_in_plane(self.physics.up, true);
-            let rej = self.physics.vel.rej_unit(front);
-            let perp = rej.perp_in_plane(self.physics.up, false);
-            let sq_norm = perp.sq_norm();
-            let norm = if sq_norm > f32::EPSILON && ground {
-                -sq_norm.wii_sqrt().min(1.0) * (perp.x * front.z - perp.z * front.x).signum()
-            } else {
-                0.0
-            };
+            let mut norm = 0.0;
+            if ground {
+                let mat = self.physics.mat();
+                let front = Mat33::from(mat) * Vec3::FRONT;
+                let front = front.perp_in_plane(self.physics.up, true);
+                let rej = self.physics.vel.rej_unit(front);
+                let perp = rej.perp_in_plane(self.physics.up, false);
+                let sq_norm = perp.sq_norm();
+                if sq_norm > f32::EPSILON {
+                    let det = perp.x * front.z - perp.z * front.x;
+                    norm = -sq_norm.wii_sqrt().min(1.0) * det.signum();
+                }
+            } else if !self.drift.has_hop_height() {
+                self.physics.rot_vec0.z *= 0.98;
+            }
             self.physics.rot_vec0.z += self.stats.common.tilt_factor * norm * self.turn.raw().abs();
         }
 
