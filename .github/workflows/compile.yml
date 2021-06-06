@@ -14,7 +14,7 @@ jobs:
         run: |
           rustup target add aarch64-unknown-linux-gnu
           sudo apt-get update ; sudo apt-get install gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu
-      
+
       - name: Compile
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: /usr/bin/aarch64-linux-gnu-gcc
@@ -22,7 +22,7 @@ jobs:
           cargo build --release --target=aarch64-unknown-linux-gnu
 
       - name: Copy around
-        run: | 
+        run: |
           mkdir release
           cp target/aarch64-unknown-linux-gnu/release/hanachan release/hanachan_linux_aarch64 || /bin/true
 
@@ -30,7 +30,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: release
-          path: | 
+          path: |
             release
 
 
@@ -48,7 +48,7 @@ jobs:
           rustup target add i686-pc-windows-gnu
           rustup target add x86_64-pc-windows-gnu
           sudo apt-get update ; sudo apt-get install mingw-w64 gcc-multilib
-      
+
       - name: Compile
         run: |
           cargo build --release --target=i686-unknown-linux-gnu
@@ -58,7 +58,7 @@ jobs:
           cargo build --release --target=x86_64-pc-windows-gnu
 
       - name: Copy around
-        run: | 
+        run: |
           mkdir release
           cp target/i686-unknown-linux-gnu/release/hanachan release/hanachan_linux_i686 || /bin/true
           cp target/x86_64-unknown-linux-gnu/release/hanachan release/hanachan_linux_x86_64 || /bin/true
@@ -70,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: release
-          path: | 
+          path: |
             release
 
   build-osx:
@@ -83,14 +83,14 @@ jobs:
         run: |
           rustup target add x86_64-apple-darwin
           # rustup target add aarch64-apple-darwin
-      
+
       - name: Compile
         run: |
           cargo build --release --target=x86_64-apple-darwin
           # cargo build --release --target=aarch64-apple-darwin
 
       - name: Copy around
-        run: | 
+        run: |
           mkdir release
           cp target/x86_64-apple-darwin/release/hanachan release/hanachan_mac_x86_64 || /bin/true
           # cp target/aarch64-apple-darwin/release/hanachan release/hanachan_mac_aarch64 || /bin/true
