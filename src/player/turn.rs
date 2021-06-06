@@ -53,7 +53,7 @@ impl Turn {
             self.drift * stats.manual_handling_tightness
         };
 
-        if drift.is_hopping() {
+        if drift.has_hop_height() {
             rot *= 1.4;
         }
 

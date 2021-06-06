@@ -24,6 +24,13 @@ impl Drift {
 
     pub fn is_hopping(&self) -> bool {
         match &self.state {
+            State::Hop(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn has_hop_height(&self) -> bool {
+        match &self.state {
             State::Hop(hop) => hop.pos_y > 0.0,
             _ => false,
         }

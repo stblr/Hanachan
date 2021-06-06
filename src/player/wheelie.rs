@@ -1,6 +1,6 @@
 use crate::fs::RkgTrick;
 use crate::geom::Vec3;
-use crate::player::Physics;
+use crate::player::{Drift, Physics};
 
 #[derive(Clone, Debug)]
 pub struct Wheelie {
@@ -34,11 +34,11 @@ impl Wheelie {
         &mut self,
         base_speed: f32,
         trick_input: Option<RkgTrick>,
-        is_drifting: bool,
+        drift: &Drift,
         physics: &mut Physics,
     ) {
         match trick_input {
-            Some(RkgTrick::Up) => self.try_start(is_drifting),
+            Some(RkgTrick::Up) => self.try_start(drift),
             Some(RkgTrick::Down) => self.try_cancel(),
             _ => (),
         }
@@ -65,8 +65,10 @@ impl Wheelie {
         }
     }
 
-    fn try_start(&mut self, is_drifting: bool) {
-        if !self.is_wheelieing && self.cooldown == 0 && !is_drifting {
+    fn try_start(&mut self, drift: &Drift) {
+        let is_hopping = drift.is_hopping();
+        let is_drifting = drift.is_drifting();
+        if !self.is_wheelieing && self.cooldown == 0 && !is_hopping && !is_drifting {
             self.is_wheelieing = true;
             self.cooldown = 20;
         }

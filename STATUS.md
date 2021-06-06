@@ -2,7 +2,7 @@
 
 Run          | Frames      | Desync reason
 :----------- | :---------: | :-----------------------------------------
-lc-rta-0-i   | 2220 / 4677 | Issue with wheelie cancellation.
+lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 1344 / 4904 | Rotation when bouncing on the edge of the road.
 lc-tas-0-i   | 821 / 4299  | Vel1 direction on supergrind start.
 mmm-rta-0-i  | 1140 / 5079 | Wrong direction when bouncing over the grass.

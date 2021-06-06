@@ -178,7 +178,7 @@ impl Player {
             self.stats.vehicle.drift_kind.is_inside(),
             airtime,
             is_landing,
-            self.drift.is_hopping(),
+            self.drift.has_hop_height(),
             is_wheelieing,
             self.boost.is_boosting(),
             &self.vehicle_body,
@@ -256,11 +256,10 @@ impl Player {
 
         if let Some(bike) = &mut self.bike {
             let base_speed = self.stats.common.base_speed;
-            let is_drifting = self.drift.is_drifting();
             bike.wheelie.update(
                 base_speed,
                 self.rkg.trick(frame_idx),
-                is_drifting,
+                &self.drift,
                 &mut self.physics,
             );
         }

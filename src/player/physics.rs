@@ -105,7 +105,7 @@ impl Physics {
         is_inside_drift: bool,
         airtime: u32,
         is_landing: bool,
-        is_hopping: bool,
+        has_hop_height: bool,
         is_boosting: bool,
         is_wheelieing: bool,
         vehicle_body: &VehicleBody,
@@ -127,7 +127,7 @@ impl Physics {
             self.smoothed_up = self.up;
             self.dir_diff = self.dir.perp_in_plane(self.smoothed_up, true);
             self.dir_diff = self.dir_diff.proj_unit(self.dir_diff);
-        } else if is_hopping {
+        } else if has_hop_height {
             self.stabilization_factor = if is_inside_drift { 0.22 } else { 0.5 };
         } else if airtime > 20 {
             if self.up.y > 0.99 {
