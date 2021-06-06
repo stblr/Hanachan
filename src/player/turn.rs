@@ -46,15 +46,18 @@ impl Turn {
         is_wheelieing: bool,
         physics: &mut Physics,
     ) {
-        physics.rot_vec2.y += if drift.is_drifting() {
+        let mut rot = if drift.is_drifting() {
             self.drift * (stats.manual_drift_tightness + drift.outside_drift_turn_bonus())
         } else {
-            let rot = self.drift * stats.manual_handling_tightness;
+            self.drift * stats.manual_handling_tightness
+        };
 
-            let hop_factor = if drift.is_hopping() { 1.4 } else { 1.0 };
-            let rot = rot * hop_factor;
+        if drift.is_hopping() {
+            rot *= 1.4;
+        }
 
-            let rot = if physics.speed1.abs() < 1.0 {
+        if !drift.is_drifting() {
+            rot = if physics.speed1.abs() < 1.0 {
                 0.0
             } else if physics.speed1 < 20.0 {
                 0.4 * rot + (physics.speed1 / 20.0) * (rot * 0.6)
@@ -63,9 +66,12 @@ impl Turn {
             } else {
                 0.5 * rot
             };
+        }
 
-            let wheelie_factor = if is_wheelieing { 0.2 } else { 1.0 };
-            rot * wheelie_factor
-        };
+        if is_wheelieing {
+            rot *= 0.2;
+        }
+
+        physics.rot_vec2.y += rot;
     }
 }
