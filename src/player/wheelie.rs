@@ -1,3 +1,4 @@
+use crate::fs::RkgTrick;
 use crate::geom::Vec3;
 use crate::player::Physics;
 
@@ -32,11 +33,15 @@ impl Wheelie {
     pub fn update(
         &mut self,
         base_speed: f32,
-        trick_is_up: bool,
+        trick_input: Option<RkgTrick>,
         is_drifting: bool,
         physics: &mut Physics,
     ) {
-        self.try_start(trick_is_up, is_drifting);
+        match trick_input {
+            Some(RkgTrick::Up) => self.try_start(is_drifting),
+            Some(RkgTrick::Down) => self.try_cancel(),
+            _ => (),
+        }
 
         self.cooldown = self.cooldown.saturating_sub(1);
 
@@ -60,9 +65,16 @@ impl Wheelie {
         }
     }
 
-    fn try_start(&mut self, trick_is_up: bool, is_drifting: bool) {
-        if !self.is_wheelieing && self.cooldown == 0 && trick_is_up && !is_drifting {
+    fn try_start(&mut self, is_drifting: bool) {
+        if !self.is_wheelieing && self.cooldown == 0 && !is_drifting {
             self.is_wheelieing = true;
+            self.cooldown = 20;
+        }
+    }
+
+    fn try_cancel(&mut self) {
+        if self.is_wheelieing && self.cooldown == 0 {
+            self.cancel();
             self.cooldown = 20;
         }
     }

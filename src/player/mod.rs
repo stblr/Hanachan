@@ -21,7 +21,7 @@ use std::convert::identity;
 use std::iter;
 use std::ops::Add;
 
-use crate::fs::{Kcl, Rkg, RkgTrick, U8};
+use crate::fs::{Kcl, Rkg, U8};
 use crate::geom::{Mat33, Vec3};
 use crate::race::{Stage, Timer};
 use crate::track::Track;
@@ -256,9 +256,13 @@ impl Player {
 
         if let Some(bike) = &mut self.bike {
             let base_speed = self.stats.common.base_speed;
-            let trick_is_up = self.rkg.trick(frame_idx) == Some(RkgTrick::Up);
             let is_drifting = self.drift.is_drifting();
-            bike.wheelie.update(base_speed, trick_is_up, is_drifting, &mut self.physics);
+            bike.wheelie.update(
+                base_speed,
+                self.rkg.trick(frame_idx),
+                is_drifting,
+                &mut self.physics,
+            );
         }
 
         self.boost.update();
