@@ -96,6 +96,15 @@ fn enable_flushing_denormals_to_zero() {
 
         _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
     }
+
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        extern "C" {
+            fn enable_ftz();
+        }
+
+        enable_ftz();
+    }
 }
 
 fn replay_rkg(common_szs: &U8, tracks: &mut Tracks, rkg_path: &PathBuf, verbose: bool) {
