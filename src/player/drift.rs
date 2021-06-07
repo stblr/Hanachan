@@ -134,7 +134,7 @@ impl Drift {
                     self.start_hop(wheelie, physics);
                 }
             }
-            State::Drift(_) if airtime > 5 => {
+            State::SlipdriftCharge(_) | State::Drift(_) if airtime > 5 => {
                 if let Some(outside_drift) = &mut self.outside_drift {
                     outside_drift.update_angle_while_airborne(physics.rot0);
                 }
@@ -147,7 +147,7 @@ impl Drift {
         }
 
         match &mut self.state {
-            State::Idle => {
+            State::Idle if ground => {
                 if let Some(outside_drift) = &mut self.outside_drift {
                     outside_drift.decrease_angle(stats.common.outside_drift_dec);
                 }

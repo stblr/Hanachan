@@ -6,7 +6,7 @@ lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 4761 / 4904 | Race end detection.
 lc-tas-0-i   | 1264 / 4299 | Trick start.
 mmm-rta-0-i  | 1565 / 5079 | Ramp collision.
-mmm-rta-0-k  | 1669 / 5311 | Wrong direction after bounce.
+mmm-rta-0-k  | 3250 / 5311 | Collision related.
 mmm-tas-0-i  | 1276 / 4880 | Trick start.
 mg-rta-0-i   | 821 / 6593  | Ramp collision.
 mg-rta-1-i   | 542 / 1772  | Drift cancellation.
