@@ -52,8 +52,9 @@ impl VehicleBody {
                 if let Some(collision) = kcl.check_collision(hitbox) {
                     count += 1;
 
-                    min = min.min(collision.min);
-                    max = max.max(collision.max);
+                    let movement = collision.min + collision.max;
+                    min = min.min(movement);
+                    max = max.max(movement);
 
                     floor_nor += collision.floor_nor;
                     let closest_kind = collision.closest_kind as usize;
@@ -63,7 +64,7 @@ impl VehicleBody {
                     rot_factor += hitbox_rot_factor;
                     has_boost_panel = has_boost_panel || collision.all_kinds & 0x40 != 0;
 
-                    let nor = (collision.min + collision.max).normalize();
+                    let nor = movement.normalize();
                     pos_rel = pos_rel + hitbox_pos_rel - bsp_hitbox.radius * nor;
                 }
             }
