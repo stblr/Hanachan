@@ -1,4 +1,6 @@
+use crate::geom::Vec3;
 use crate::player::{CommonStats, Drift, Physics};
+use crate::wii::F32Ext;
 
 #[derive(Clone, Debug)]
 pub struct Turn {
@@ -74,6 +76,15 @@ impl Turn {
             30..=70 => ((1.0 - 0.025 * (airtime - 30) as f32) * rot).max(0.0),
             _ => 0.0,
         };
+
+        let front = physics.rot0.rotate(Vec3::FRONT);
+        let cross = front.cross(physics.dir);
+        let norm = cross.sq_norm().wii_sqrt();
+        let dot = front.dot(physics.dir);
+        let angle = norm.wii_atan2(dot).abs().to_degrees();
+        if angle > 60.0 {
+            rot *= (1.0 - (angle - 60.0) / (100.0 - 60.0)).max(0.0);
+        }
 
         if is_wheelieing {
             rot *= 0.2;

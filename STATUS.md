@@ -9,7 +9,7 @@ mmm-rta-0-i  | 1565 / 5079 | Ramp collision.
 mmm-rta-0-k  | 5168 / 5311 | Race end detection.
 mmm-tas-0-i  | 1276 / 4880 | Trick start.
 mg-rta-0-i   | 821 / 6593  | Ramp collision.
-mg-rta-1-i   | 612 / 1772  | Turn rotation over 60 degrees.
+mg-rta-1-i   | 624 / 1772  | Collision with mushroom object.
 mg-rta-2-i   | 818 / 6593  | Ramp collision.
 mg-rta-2-k   | 840 / 6871  | Ramp collision.
 tf-rta-0-i   | 742 / 6816  | Conveyor speed (kcl + object).
