@@ -58,7 +58,7 @@ impl Tri {
             xy + v0.z * v1.z
         }
 
-        if 1 << (self.flags & 0x1f) & 0x20e80fff == 0 {
+        if 1 << (self.flags & 0x1f) & hitbox.flags == 0 {
             return None;
         }
 
@@ -130,11 +130,20 @@ impl Tri {
 
         let cos = ps_dot(edge_nor, other_edge_nor);
         let sq_dist = if cos * edge_dist > other_edge_dist {
+            if !hitbox.has_last_pos && edge_dist > plane_dist {
+                return None;
+            }
+
             radius * radius - edge_dist * edge_dist
         } else {
             let t = (cos * edge_dist - other_edge_dist) / (cos * cos - 1.0);
             let s = edge_dist - t * cos;
             let corner_pos = s * edge_nor + t * other_edge_nor;
+
+            if !hitbox.has_last_pos && corner_pos.sq_norm() > plane_dist * plane_dist {
+                return None;
+            }
+
             radius * radius - corner_pos.sq_norm()
         };
 

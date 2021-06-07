@@ -72,7 +72,7 @@ impl Wheel {
             let right = Mat33::from(physics.mat()) * Vec3::RIGHT;
             hitbox_pos += bike.lean.rot() * bsp_wheel.hitbox_radius * 0.3 * right;
         }
-        let hitbox = Hitbox::new(hitbox_pos, self.hitbox_radius);
+        let hitbox = Hitbox::new(hitbox_pos, true, self.hitbox_radius, 0x20e80fff);
         self.hitbox_pos_rel = hitbox_pos - physics.pos;
         let collision = kcl.check_collision(hitbox);
         if let Some(collision) = collision {
@@ -85,6 +85,7 @@ impl Wheel {
             speed_factor: stats.kcl_speed_factors[collision.closest_kind as usize],
             rot_factor: stats.kcl_rot_factors[collision.closest_kind as usize],
             has_boost_panel: collision.all_kinds & 0x40 != 0,
+            has_sticky_road: collision.all_kinds & 0x400000 != 0,
         });
 
         self.axis_s = self.axis.dot(self.pos - self.topmost_pos);

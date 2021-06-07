@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
 use crate::fs::{Error, Parse, SliceRefExt};
 use crate::wii::F32Ext;
@@ -143,6 +143,12 @@ impl Sub for Vec3 {
             y: self.y - other.y,
             z: self.z - other.z,
         }
+    }
+}
+
+impl SubAssign for Vec3 {
+    fn sub_assign(&mut self, other: Vec3) {
+        *self = *self - other;
     }
 }
 

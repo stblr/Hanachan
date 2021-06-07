@@ -48,7 +48,7 @@ impl VehicleBody {
             if !bsp_hitbox.walls_only {
                 let hitbox_pos_rel = physics.rot1.rotate(bsp_hitbox.pos);
                 let pos = hitbox_pos_rel + physics.pos;
-                let hitbox = Hitbox::new(pos, bsp_hitbox.radius);
+                let hitbox = Hitbox::new(pos, true, bsp_hitbox.radius, 0x20e80fff);
                 if let Some(collision) = kcl.check_collision(hitbox) {
                     count += 1;
 
@@ -82,6 +82,7 @@ impl VehicleBody {
                 speed_factor,
                 rot_factor: rot_factor / count as f32,
                 has_boost_panel: false,
+                has_sticky_road: false,
             });
 
             let pos_rel = (1.0 / count as f32) * pos_rel;

@@ -6,4 +6,5 @@ pub struct Collision {
     pub speed_factor: f32,
     pub rot_factor: f32,
     pub has_boost_panel: bool,
+    pub has_sticky_road: bool,
 }

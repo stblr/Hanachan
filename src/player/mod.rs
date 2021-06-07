@@ -8,6 +8,7 @@ mod params;
 mod physics;
 mod start_boost;
 mod stats;
+mod sticky_road;
 mod turn;
 mod vehicle_body;
 mod wheel;
@@ -34,6 +35,7 @@ use drift::Drift;
 use lean::Lean;
 use physics::Physics;
 use start_boost::StartBoost;
+use sticky_road::StickyRoad;
 use turn::Turn;
 use vehicle_body::VehicleBody;
 use wheel::Wheel;
@@ -55,6 +57,7 @@ pub struct Player {
     mushroom_boost: u16,
     standstill_boost_rot: f32, // TODO maybe rename
     bike: Option<Bike>,
+    sticky_road: StickyRoad,
     physics: Physics,
     vehicle_body: VehicleBody,
     wheels: Vec<Wheel>,
@@ -131,6 +134,7 @@ impl Player {
             mushroom_boost: 0,
             standstill_boost_rot: 0.0,
             bike,
+            sticky_road: StickyRoad::new(),
             physics,
             vehicle_body,
             wheels,
@@ -196,6 +200,8 @@ impl Player {
         }
 
         self.physics.update_dir(self.airtime, is_landing, self.kcl_rot_factor, &self.drift);
+
+        self.sticky_road.update(&mut self.physics, &self.wheels, kcl);
 
         let kcl_speed_factor_min = self
             .wheels
@@ -403,6 +409,7 @@ impl Player {
                 speed_factor: 1.0,
                 rot_factor: 1.0,
                 has_boost_panel: false,
+                has_sticky_road: false,
             });
         }
 
