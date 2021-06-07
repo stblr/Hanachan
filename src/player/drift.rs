@@ -109,14 +109,7 @@ impl Drift {
 
         match &mut self.state {
             State::Idle if drift_input && !last_drift_input => {
-                if let Some(wheelie) = wheelie {
-                    wheelie.cancel();
-                }
-
-                physics.vel0.y = 10.0;
-                physics.normal_acceleration = 0.0;
-
-                self.state = State::Hop(HopState::new(physics.rot0));
+                self.start_hop(wheelie, physics);
             }
             State::SlipdriftCharge(slipdrift_charge) if ground => {
                 let stick_x = slipdrift_charge.stick_x;
@@ -137,6 +130,8 @@ impl Drift {
                         }
                         _ => self.state = State::Idle,
                     }
+                } else if !hop.can_start_drift() && drift_input && !last_drift_input {
+                    self.start_hop(wheelie, physics);
                 }
             }
             State::Drift(_) if airtime > 5 => {
@@ -180,6 +175,17 @@ impl Drift {
             }
             _ => (),
         }
+    }
+
+    fn start_hop(&mut self, wheelie: Option<&mut Wheelie>, physics: &mut Physics) {
+        if let Some(wheelie) = wheelie {
+            wheelie.cancel();
+        }
+
+        physics.vel0.y = 10.0;
+        physics.normal_acceleration = 0.0;
+
+        self.state = State::Hop(HopState::new(physics.rot0));
     }
 
     fn start_drift(&mut self, hop_stick_x: f32, stats: &Stats, physics: &Physics) {

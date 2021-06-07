@@ -4,10 +4,10 @@ Run          | Frames      | Desync reason
 :----------- | :---------: | :-----------------------------------------
 lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 4761 / 4904 | Race end detection.
-lc-tas-0-i   | 821 / 4299  | Vel1 direction on supergrind start.
+lc-tas-0-i   | 1237 / 4299 | Lean rotation during airtime.
 mmm-rta-0-i  | 1565 / 5079 | Ramp collision.
 mmm-rta-0-k  | 1669 / 5311 | Wrong direction after bounce.
-mmm-tas-0-i  | 1259 / 4880 | Vel1 direction on rfh start.
+mmm-tas-0-i  | 1276 / 4880 | Trick start.
 mg-rta-0-i   | 821 / 6593  | Ramp collision.
 mg-rta-1-i   | 542 / 1772  | Drift cancellation.
 mg-rta-2-i   | 818 / 6593  | Ramp collision.
