@@ -39,7 +39,7 @@ impl Lean {
         }
 
         let (rot_min, rot_max, s) = match drift_stick_x {
-            Some(drift_stick_x) => {
+            Some(drift_stick_x) if airtime <= 20 => {
                 if stick_x == 0.0 {
                     self.rot += 0.05 * (0.5 * drift_stick_x - self.rot);
                 } else {
@@ -52,7 +52,7 @@ impl Lean {
                 };
                 (rot_min, rot_max, self.s_factor() * -stick_x)
             }
-            None => {
+            _ => {
                 let s = if stick_x.abs() <= 0.2 || airtime > 20 || is_wheelieing {
                     self.rot *= 0.9;
                     0.0

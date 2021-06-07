@@ -4,7 +4,7 @@ Run          | Frames      | Desync reason
 :----------- | :---------: | :-----------------------------------------
 lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 4761 / 4904 | Race end detection.
-lc-tas-0-i   | 1237 / 4299 | Lean rotation during airtime.
+lc-tas-0-i   | 1264 / 4299 | Trick start.
 mmm-rta-0-i  | 1565 / 5079 | Ramp collision.
 mmm-rta-0-k  | 1669 / 5311 | Wrong direction after bounce.
 mmm-tas-0-i  | 1276 / 4880 | Trick start.
