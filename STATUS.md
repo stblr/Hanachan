@@ -9,7 +9,7 @@ mmm-rta-0-i  | 1565 / 5079 | Ramp collision.
 mmm-rta-0-k  | 5168 / 5311 | Race end detection.
 mmm-tas-0-i  | 1276 / 4880 | Trick start.
 mg-rta-0-i   | 821 / 6593  | Ramp collision.
-mg-rta-1-i   | 542 / 1772  | Drift cancellation.
+mg-rta-1-i   | 612 / 1772  | Turn rotation over 60 degrees.
 mg-rta-2-i   | 818 / 6593  | Ramp collision.
 mg-rta-2-k   | 840 / 6871  | Ramp collision.
 tf-rta-0-i   | 742 / 6816  | Conveyor speed (kcl + object).
@@ -28,7 +28,7 @@ dksc-rta-0-i | 0 / 6864    | Initial direction.
 dksc-rta-0-k | 0 / 7249    | Initial direction.
 dksc-tas-0-i | 0 / 6166    | Initial direction.
 wgm-rta-0-i  | 508 / 7183  | Collision related.
-wgm-rta-1-i  | 431 / 2466  | Braking.
+wgm-rta-1-i  | 463 / 2466  | Charging an ssmt.
 wgm-rta-0-k  | 489 / 7501  | Collision related.
 rmc3-rta-0-i | 5080 / 5223 | Race end detection.
 rmc3-rta-0-k | 5147 / 5290 | Race end detection.

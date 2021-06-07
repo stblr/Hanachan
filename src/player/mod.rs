@@ -270,6 +270,16 @@ impl Player {
 
         self.offroad_invicibility = self.offroad_invicibility.saturating_sub(1);
 
+        let last_accelerate = timer
+            .frame_idx()
+            .checked_sub(1)
+            .map(|last_frame_idx| self.rkg.accelerate(last_frame_idx))
+            .unwrap_or(false);
+        let last_brake = timer
+            .frame_idx()
+            .checked_sub(1)
+            .map(|last_frame_idx| self.rkg.brake(last_frame_idx))
+            .unwrap_or(false);
         let is_wheelieing = self
             .bike
             .as_ref()
@@ -277,6 +287,10 @@ impl Player {
             .unwrap_or(false);
         self.physics.update_vel1(
             &self.stats,
+            self.rkg.accelerate(frame_idx),
+            self.rkg.brake(frame_idx),
+            last_accelerate,
+            last_brake,
             self.airtime,
             self.kcl_speed_factor,
             self.drift.is_drifting(),

@@ -223,6 +223,10 @@ impl Physics {
     pub fn update_vel1(
         &mut self,
         stats: &Stats,
+        accelerate: bool,
+        brake: bool,
+        last_accelerate: bool,
+        last_brake: bool,
         airtime: u32,
         kcl_speed_factor: f32,
         is_drifting: bool,
@@ -246,13 +250,21 @@ impl Physics {
             }
         } else if let Some(boost_acceleration) = boost.acceleration() {
             acceleration = boost_acceleration;
-        } else if timer.stage() == Stage::Race {
-            let (ys, xs): (&[f32], &[f32]) = if is_drifting {
-                (&stats.common.drift_acceleration_ys, &stats.common.drift_acceleration_xs)
+        } else {
+            if timer.stage() == Stage::Race && accelerate {
+                let (ys, xs): (&[f32], &[f32]) = if is_drifting {
+                    (&stats.common.drift_acceleration_ys, &stats.common.drift_acceleration_xs)
+                } else {
+                    (&stats.common.acceleration_ys, &stats.common.acceleration_xs)
+                };
+                acceleration = self.compute_acceleration(ys, xs);
+            } else if timer.stage() == Stage::Race && brake {
+                if !last_accelerate && last_brake {
+                    acceleration = -1.5;
+                }
             } else {
-                (&stats.common.acceleration_ys, &stats.common.acceleration_xs)
-            };
-            acceleration = self.compute_acceleration(ys, xs);
+                self.speed1 *= 0.98;
+            }
 
             if !is_drifting {
                 let t = stats.common.handling_speed_multiplier;
