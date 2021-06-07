@@ -344,7 +344,9 @@ impl Player {
         self.diving_rot *= 0.96;
         if !ground {
             let stick_y = self.rkg.stick_y(timer.frame_idx());
-            let diving_rot_diff = if self.airtime > 50 {
+            let diving_rot_diff = if timer.stage() != Stage::Race {
+                0.0
+            } else if self.airtime > 50 {
                 stick_y
             } else {
                 self.airtime as f32 / 50.0 * stick_y
