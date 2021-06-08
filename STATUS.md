@@ -17,7 +17,7 @@ tf-rta-2-i   | 690 / 7103  | Conveyor speed (kcl + object).
 tf-rta-2-k   | 761 / 7452  | Conveyor speed (kcl + object).
 tf-tas-0-i   | 737 / 6306  | Conveyor speed (kcl + object).
 mc-rta-0-i   | 1222 / 5371 | Ramp collision.
-mc-rta-1-i   | 376 / 3415  | Collision related.
+mc-rta-1-i   | 411 / 3415  | Charging an ssmt.
 mc-rta-0-k   | 5526 / 5669 | Race end detection.
 mc-tas-0-i   | 907 / 5229  | Wrong direction when interacting with the edge of the road.
 cm-rta-0-i   | 640 / 6692  | Escalator speed (kcl + object).

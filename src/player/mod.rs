@@ -242,7 +242,7 @@ impl Player {
         let stick_x = self.rkg.stick_x(frame_idx);
         self.turn.update(&self.stats.common, airtime, stick_x, &self.drift);
 
-        let drift_input = self.rkg.drift(frame_idx);
+        let drift_input = self.rkg.drift(frame_idx) && timer.stage() == Stage::Race;
         let last_drift_input = timer
             .frame_idx()
             .checked_sub(1)
