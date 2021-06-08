@@ -30,7 +30,7 @@ impl StickyRoad {
         let mut pos = physics.pos;
         let mut vel = physics.speed1 * physics.vel1_dir;
         for _ in 0..3 {
-            let hitbox = Hitbox::new(pos + vel, false, 200.0, 0x400800);
+            let hitbox = Hitbox::new(pos + vel, None, 200.0, 0x400800);
             if let Some(collision) = kcl.check_collision(hitbox) {
                 physics.vel1_dir = physics.vel1_dir.perp_in_plane(collision.floor_nor, true);
                 return;

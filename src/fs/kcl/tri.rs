@@ -87,6 +87,13 @@ impl Tri {
         }
 
         if ca_dist <= 0.0 && ab_dist <= 0.0 && bc_dist <= 0.0 {
+            if let Some(last_pos) = hitbox.last_pos {
+                let last_pos = pos - (hitbox.pos - last_pos);
+                if plane_dist < 0.0 && ps_dot(last_pos, self.plane_nor) < 0.0 {
+                    return None;
+                }
+            }
+
             return Some(Collision {
                 dist: dist_in_plane,
                 nor: self.plane_nor,
@@ -130,7 +137,7 @@ impl Tri {
 
         let cos = ps_dot(edge_nor, other_edge_nor);
         let sq_dist = if cos * edge_dist > other_edge_dist {
-            if !hitbox.has_last_pos && edge_dist > plane_dist {
+            if hitbox.last_pos.is_none() && edge_dist > plane_dist {
                 return None;
             }
 
@@ -139,12 +146,13 @@ impl Tri {
             let t = (cos * edge_dist - other_edge_dist) / (cos * cos - 1.0);
             let s = edge_dist - t * cos;
             let corner_pos = s * edge_nor + t * other_edge_nor;
+            let corner_sq_dist = corner_pos.sq_norm();
 
-            if !hitbox.has_last_pos && corner_pos.sq_norm() > plane_dist * plane_dist {
+            if hitbox.last_pos.is_none() && corner_sq_dist > plane_dist * plane_dist {
                 return None;
             }
 
-            radius * radius - corner_pos.sq_norm()
+            radius * radius - corner_sq_dist
         };
 
         if sq_dist < plane_dist * plane_dist || sq_dist < 0.0 {
@@ -154,6 +162,13 @@ impl Tri {
         let dist = sq_dist.wii_sqrt() - plane_dist;
         if dist <= 0.0 {
             return None;
+        }
+
+        if let Some(last_pos) = hitbox.last_pos {
+            let last_pos = pos - (hitbox.pos - last_pos);
+            if ps_dot(last_pos, self.plane_nor) < 0.0 {
+                return None;
+            }
         }
 
         Some(Collision {

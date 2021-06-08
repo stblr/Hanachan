@@ -95,7 +95,7 @@ impl Player {
 
         let physics = Physics::new(bsp, track);
 
-        let vehicle_body = VehicleBody::new(bsp.hitboxes.clone());
+        let vehicle_body = VehicleBody::new(bsp.hitboxes.clone(), &physics);
 
         let bike_parts_disp_param = common_szs
             .get_node("./bikePartsDispParam.bin")?

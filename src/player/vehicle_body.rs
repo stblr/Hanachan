@@ -5,14 +5,26 @@ use crate::player::{Collision, CommonStats, Physics};
 #[derive(Clone, Debug)]
 pub struct VehicleBody {
     bsp_hitboxes: Vec<BspHitbox>,
+    hitboxes: Vec<Hitbox>,
     collision: Option<Collision>,
     has_floor_collision: bool,
 }
 
 impl VehicleBody {
-    pub fn new(bsp_hitboxes: Vec<BspHitbox>) -> VehicleBody {
+    pub fn new(bsp_hitboxes: Vec<BspHitbox>, physics: &Physics) -> VehicleBody {
+        let hitboxes = bsp_hitboxes
+            .iter()
+            .map(|bsp_hitbox| Hitbox {
+                pos: Vec3::ZERO,
+                last_pos: Some(physics.mat * bsp_hitbox.pos),
+                radius: bsp_hitbox.radius,
+                flags: 0x20e80fff,
+            })
+            .collect();
+
         VehicleBody {
             bsp_hitboxes,
+            hitboxes,
             collision: None,
             has_floor_collision: false,
         }
@@ -44,12 +56,12 @@ impl VehicleBody {
         let mut rot_factor = 0.0;
         let mut has_boost_panel = false;
         let mut pos_rel = Vec3::ZERO;
-        for bsp_hitbox in &self.bsp_hitboxes {
+        for (bsp_hitbox, hitbox) in self.bsp_hitboxes.iter().zip(self.hitboxes.iter_mut()) {
             if !bsp_hitbox.walls_only {
                 let hitbox_pos_rel = physics.rot1.rotate(bsp_hitbox.pos);
                 let pos = hitbox_pos_rel + physics.pos;
-                let hitbox = Hitbox::new(pos, true, bsp_hitbox.radius, 0x20e80fff);
-                if let Some(collision) = kcl.check_collision(hitbox) {
+                hitbox.update_pos(pos);
+                if let Some(collision) = kcl.check_collision(*hitbox) {
                     count += 1;
 
                     let movement = collision.min + collision.max;

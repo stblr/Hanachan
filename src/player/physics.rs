@@ -65,7 +65,7 @@ impl Physics {
         let diff1 = Vec3::new(800.0, 0.0, -461.87991);
         let mut pos = ktpt_pos + diff0 + diff1;
 
-        let hitbox = Hitbox::new(pos, false, 100.0, 0x20e80fff);
+        let hitbox = Hitbox::new(pos, None, 100.0, 0x20e80fff);
         if let Some(collision) = track.kcl().check_collision(hitbox) {
             pos = pos + (collision.min + collision.max) - 100.0 * collision.floor_nor;
             pos += bsp.initial_pos_y * collision.floor_nor;

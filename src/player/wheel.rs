@@ -13,7 +13,7 @@ pub struct Wheel {
     pos: Vec3,
     last_pos: Vec3,
     last_pos_rel: Vec3,
-    hitbox_radius: f32,
+    hitbox: Hitbox,
     hitbox_pos_rel: Vec3,
     collision: Option<Collision>,
 }
@@ -27,7 +27,17 @@ impl Wheel {
         let topmost_pos = bsp_wheel.topmost_pos + player_pos;
         let pos = topmost_pos + axis_s * axis;
         let last_pos_rel = pos - topmost_pos;
+
+        let hitbox_pos = pos;
+        let hitbox_last_pos = Some(player_pos);
         let hitbox_radius = 10.0; // Another incorrectly initialized value
+        let hitbox = Hitbox {
+            pos: hitbox_pos,
+            last_pos: hitbox_last_pos,
+            radius: hitbox_radius,
+            flags: 0x20e80fff,
+        };
+
         Wheel {
             handle,
             bsp_wheel,
@@ -37,7 +47,7 @@ impl Wheel {
             pos,
             last_pos: pos,
             last_pos_rel,
-            hitbox_radius,
+            hitbox,
             hitbox_pos_rel: Vec3::ZERO,
             collision: None,
         }
@@ -72,13 +82,13 @@ impl Wheel {
             let right = Mat33::from(physics.mat()) * Vec3::RIGHT;
             hitbox_pos += bike.lean.rot() * bsp_wheel.hitbox_radius * 0.3 * right;
         }
-        let hitbox = Hitbox::new(hitbox_pos, true, self.hitbox_radius, 0x20e80fff);
+        self.hitbox.update_pos(hitbox_pos);
         self.hitbox_pos_rel = hitbox_pos - physics.pos;
-        let collision = kcl.check_collision(hitbox);
+        let collision = kcl.check_collision(self.hitbox);
         if let Some(collision) = collision {
             self.pos += collision.min + collision.max;
         }
-        self.hitbox_radius = bsp_wheel.hitbox_radius;
+        self.hitbox.radius = bsp_wheel.hitbox_radius;
 
         self.collision = collision.map(|collision| Collision {
             floor_nor: collision.floor_nor,

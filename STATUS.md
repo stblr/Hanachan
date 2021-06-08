@@ -23,7 +23,7 @@ mc-tas-0-i   | 907 / 5229  | Wrong direction when interacting with the edge of t
 cm-rta-0-i   | 640 / 6692  | Escalator speed (kcl + object).
 cm-rta-1-i   | 178 / 2441  | Collision related.
 cm-rta-2-i   | 637 / 7482  | Escalator speed (kcl + object).
-cm-rta-2-k   | 563 / 7762  | Collision related.
+cm-rta-2-k   | 665 / 7762  | Collision related.
 dksc-rta-0-i | 0 / 6864    | Initial direction.
 dksc-rta-0-k | 0 / 7249    | Initial direction.
 dksc-tas-0-i | 0 / 6166    | Initial direction.
