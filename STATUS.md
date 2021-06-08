@@ -30,6 +30,14 @@ dksc-tas-0-i | 0 / 6166    | Initial direction.
 wgm-rta-0-i  | 628 / 7183  | Collision related.
 wgm-rta-1-i  | 463 / 2466  | Charging an ssmt.
 wgm-rta-0-k  | 929 / 7501  | Collision related.
+rgv2-rta-0-i | 847 / 3718  | Ramp collision.
+rgv2-rta-1-i | 411 / 3596  | Charging an ssmt.
+rgv2-rta-0-k | 860 / 3718  | Ramp collision.
+rsgb-rta-0-i | 1614 / 5439 | Ramp collision.
+rsgb-rta-0-k | 1117 / 5687 | Collision related.
+rbc3-rta-0-i | 1386 / 7588 | Ramp collision.
+rbc3-rta-2-i | 1386 / 8728 | Ramp collision.
+rbc3-rta-2-k | 1420 / 9185 | Ramp collision.
 rmc3-rta-0-i | 5080 / 5223 | Race end detection.
 rmc3-rta-0-k | 5147 / 5290 | Race end detection.
 rmc3-rta-0-o | 5311 / 5454 | Race end detection.
