@@ -1,9 +1,11 @@
 mod collision;
 mod header;
+mod jump_pad_variant;
 mod octree;
 mod tri;
 
 pub use collision::Collision;
+pub use jump_pad_variant::JumpPadVariant;
 
 use std::iter;
 

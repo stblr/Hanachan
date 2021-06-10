@@ -1,4 +1,4 @@
-use crate::fs::KclCollision;
+use crate::fs::{KclJumpPadVariant, KclCollision};
 use crate::geom::Vec3;
 use crate::player::CommonStats;
 
@@ -9,7 +9,7 @@ pub struct Collision {
     speed_factor: f32,
     rot_factor: f32,
     has_boost_panel: bool,
-    jump_pad: Option<u8>,
+    jump_pad: Option<KclJumpPadVariant>,
     has_sticky_road: bool,
 }
 
@@ -46,6 +46,10 @@ impl Collision {
         self.has_boost_panel
     }
 
+    pub fn jump_pad(&self) -> Option<KclJumpPadVariant> {
+        self.jump_pad
+    }
+
     pub fn has_sticky_road(&self) -> bool {
         self.has_sticky_road
     }
@@ -65,7 +69,7 @@ impl Collision {
             }
 
             if let Some(surface) = kcl_collision.find_closest(0x100) {
-                self.jump_pad = Some((surface >> 5 & 7) as u8);
+                self.jump_pad = Some(KclJumpPadVariant::new((surface >> 5 & 7) as u8));
             }
 
             if kcl_collision.surface_kinds() & 0x400000 != 0 {

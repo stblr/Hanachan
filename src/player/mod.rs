@@ -4,6 +4,7 @@ mod collision;
 mod drift;
 mod floor_factors;
 mod handle;
+mod jump_pad;
 mod lean;
 mod params;
 mod physics;
@@ -32,6 +33,7 @@ use boost::{Boost, Kind as BoostKind};
 use collision::Collision;
 use drift::Drift;
 use floor_factors::FloorFactors;
+use jump_pad::JumpPad;
 use lean::Lean;
 use physics::Physics;
 use start_boost::StartBoost;
@@ -54,6 +56,7 @@ pub struct Player {
     diving_rot: f32,
     mushroom_boost: u16,
     standstill_boost_rot: f32, // TODO maybe rename
+    jump_pad: JumpPad,
     bike: Option<Bike>,
     sticky_road: StickyRoad,
     physics: Physics,
@@ -129,6 +132,7 @@ impl Player {
             diving_rot: 0.0,
             mushroom_boost: 0,
             standstill_boost_rot: 0.0,
+            jump_pad: JumpPad::new(),
             bike,
             sticky_road: StickyRoad::new(),
             physics,
@@ -185,11 +189,14 @@ impl Player {
             self.floor_factors.activate_invicibility(60);
         }
 
+        self.jump_pad.try_start(&mut self.physics, collisions.clone());
+
         self.physics.update_dir(
             self.airtime,
             is_landing,
             self.floor_factors.rot_factor(),
             &self.drift,
+            self.jump_pad.enabled()
         );
 
         self.sticky_road.update(&mut self.physics, collisions.clone(), kcl);
@@ -265,11 +272,13 @@ impl Player {
             self.drift.is_drifting(),
             &self.boost,
             self.turn.raw(),
+            self.jump_pad.speed(),
             is_wheelieing,
             timer,
         );
 
-        self.update_standstill_boost_rot(ground, timer);
+        self.update_standstill_boost_rot(ground, self.jump_pad.enabled(), timer);
+
         if let Some(bike) = &mut self.bike {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
 
@@ -390,33 +399,35 @@ impl Player {
         }
     }
 
-    fn update_standstill_boost_rot(&mut self, ground: bool, timer: &Timer) {
-        if !ground {
-            self.standstill_boost_rot = 0.0;
-        } else if timer.stage() == Stage::Countdown {
-            let inc = 0.015 * -self.start_boost.charge - self.standstill_boost_rot;
-            self.standstill_boost_rot += inc;
-        } else {
-            let acceleration = (self.physics.speed1 - self.physics.last_speed1).clamp(-3.0, 3.0);
+    fn update_standstill_boost_rot(&mut self, ground: bool, jump_pad_enabled: bool, timer: &Timer) {
+        let mut next = 0.0;
+        let mut t = 1.0;
+        if ground {
+            if timer.stage() == Stage::Countdown {
+                next = 0.015 * -self.start_boost.charge;
+            } else if !jump_pad_enabled {
+                let acceleration = self.physics.speed1 - self.physics.last_speed1;
+                let acceleration = acceleration.clamp(-3.0, 3.0);
 
-            let is_bike = self.stats.vehicle.drift_kind.is_bike();
-            let vehicle_factor = if is_bike { 0.2 } else { 1.0 };
+                if self.mushroom_boost > 0 {
+                    next = -acceleration * 0.15 * 0.25;
+                    let is_wheelieing = self
+                        .bike
+                        .as_ref()
+                        .map(|bike| bike.wheelie.is_wheelieing())
+                        .unwrap_or(false);
+                    if is_wheelieing {
+                        next *= 0.5;
+                    }
+                } else {
+                    next = -acceleration * 0.15 * 0.08;
+                }
 
-            let is_wheelieing = self
-                .bike
-                .as_ref()
-                .map(|bike| bike.wheelie.is_wheelieing())
-                .unwrap_or(false);
-            let (boost_factor, wheelie_factor) = if self.mushroom_boost > 0 {
-                let wheelie_factor = if is_wheelieing { 0.5 } else { 1.0 };
-                (0.25, wheelie_factor)
-            } else {
-                (0.08, 1.0)
-            };
-
-            let val = -acceleration * 0.15 * boost_factor * wheelie_factor;
-            let inc = vehicle_factor * (val - self.standstill_boost_rot);
-            self.standstill_boost_rot += inc;
+                let is_bike = self.stats.vehicle.drift_kind.is_bike();
+                t = if is_bike { 0.2 } else { 1.0 };
+            }
         }
+
+        self.standstill_boost_rot += t * (next - self.standstill_boost_rot);
     }
 }

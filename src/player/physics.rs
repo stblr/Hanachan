@@ -164,8 +164,9 @@ impl Physics {
         is_landing: bool,
         floor_rot_factor: f32,
         drift: &Drift,
+        jump_pad_enabled: bool,
     ) {
-        if airtime > 5 {
+        if airtime > 5 || jump_pad_enabled {
             self.vel1_dir = self.dir;
             return;
         }
@@ -224,6 +225,7 @@ impl Physics {
         is_drifting: bool,
         boost: &Boost,
         raw_turn: f32,
+        jump_pad_speed: Option<f32>,
         is_wheelieing: bool,
         timer: &Timer,
     ) {
@@ -268,7 +270,7 @@ impl Physics {
 
         self.speed1 += acceleration;
 
-        let base_speed = stats.common.base_speed;
+        let base_speed = jump_pad_speed.unwrap_or(stats.common.base_speed);
         let boost_factor = boost.factor();
         let wheelie_bonus = if is_wheelieing { 0.15 } else { 0.0 };
         let mut next_soft_limit = (boost_factor + wheelie_bonus) * floor_speed_factor * base_speed;
