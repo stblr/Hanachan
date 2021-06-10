@@ -104,7 +104,7 @@ impl Physics {
         &mut self,
         is_inside_drift: bool,
         airtime: u32,
-        is_landing: bool,
+        last_airtime: u32,
         has_hop_height: bool,
         is_boosting: bool,
         is_wheelieing: bool,
@@ -117,6 +117,7 @@ impl Physics {
             .unwrap_or(Vec3::UP);
 
         self.stabilization_factor = 0.1;
+        let is_landing = airtime == 0 && last_airtime >= 3;
         if is_landing {
             self.up = next_up;
             self.smoothed_up = self.up;
@@ -153,7 +154,7 @@ impl Physics {
             let front = Mat33::from(self.mat) * Vec3::FRONT;
             let dot = front.dot(self.smoothed_up);
             if dot < -0.1 {
-                self.stabilization_factor = 0.1 + (0.5 * dot.abs().min(0.2));
+                self.stabilization_factor += (0.5 * dot.abs()).min(0.2);
             }
         }
     }
@@ -161,7 +162,7 @@ impl Physics {
     pub fn update_dir(
         &mut self,
         airtime: u32,
-        is_landing: bool,
+        last_airtime: u32,
         floor_rot_factor: f32,
         drift: &Drift,
         jump_pad_enabled: bool,
@@ -199,6 +200,7 @@ impl Physics {
         }
         self.vel1_dir = self.dir.perp_in_plane(self.smoothed_up, true);
 
+        let is_landing = airtime == 0 && last_airtime >= 3;
         if is_landing {
             let cross = self.dir.cross(landing_dir);
             let norm = cross.sq_norm().wii_sqrt();

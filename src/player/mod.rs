@@ -155,12 +155,12 @@ impl Player {
             .chain(iter::once(self.vehicle_body.collision()));
 
         let ground = collisions.clone().any(|collision| collision.floor_nor().is_some());
-        let (is_landing, airtime) = if ground {
-            (self.airtime >= 3, 0)
+        let last_airtime = self.airtime;
+        if ground {
+            self.airtime = 0;
         } else {
-            (false, self.airtime + 1)
-        };
-        self.airtime = airtime;
+            self.airtime += 1;
+        }
 
         if timer.stage() == Stage::Countdown {
             self.start_boost.update(self.rkg.accelerate(timer.frame_idx()));
@@ -175,13 +175,17 @@ impl Player {
             .unwrap_or(false);
         self.physics.update_floor_nor(
             self.stats.vehicle.drift_kind.is_inside(),
-            airtime,
-            is_landing,
+            self.airtime,
+            last_airtime,
             self.drift.has_hop_height(),
             is_wheelieing,
             self.boost.is_boosting(),
             collisions.clone(),
         );
+
+        if self.airtime == 0 && last_airtime != 0 {
+            self.jump_pad.end();
+        }
 
         let has_boost_panel = collisions.clone().any(Collision::has_boost_panel);
         if has_boost_panel {
@@ -193,7 +197,7 @@ impl Player {
 
         self.physics.update_dir(
             self.airtime,
-            is_landing,
+            last_airtime,
             self.floor_factors.rot_factor(),
             &self.drift,
             self.jump_pad.enabled()
@@ -210,7 +214,7 @@ impl Player {
 
         let frame_idx = timer.frame_idx();
         let stick_x = self.rkg.stick_x(frame_idx);
-        self.turn.update(&self.stats.common, airtime, stick_x, &self.drift);
+        self.turn.update(&self.stats.common, self.airtime, stick_x, &self.drift);
 
         let drift_input = self.rkg.drift(frame_idx) && timer.stage() == Stage::Race;
         let last_drift_input = timer
@@ -284,7 +288,7 @@ impl Player {
 
             bike.lean.update(
                 self.rkg.stick_x(timer.frame_idx()),
-                airtime,
+                self.airtime,
                 self.drift.drift_stick_x(),
                 is_wheelieing,
                 &mut self.physics,

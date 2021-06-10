@@ -37,7 +37,7 @@ rsgb-rta-0-i | 1619 / 5439 | Ramp collision.
 rsgb-rta-0-k | 1117 / 5687 | Collision related.
 rbc3-rta-0-i | 1392 / 7588 | Ramp collision.
 rbc3-rta-2-i | 1391 / 8728 | Ramp collision.
-rbc3-rta-2-k | 1420 / 9185 | Ramp collision.
+rbc3-rta-2-k | 1424 / 9185 | Wall collision.
 rmc3-rta-0-i | 5080 / 5223 | Race end detection.
 rmc3-rta-0-k | 5147 / 5290 | Race end detection.
 rmc3-rta-0-o | 5311 / 5454 | Race end detection.

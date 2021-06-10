@@ -46,4 +46,8 @@ impl JumpPad {
 
         self.variant = Some(variant);
     }
+
+    pub fn end(&mut self) {
+        self.variant = None;
+    }
 }
