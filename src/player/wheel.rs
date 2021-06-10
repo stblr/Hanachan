@@ -15,7 +15,7 @@ pub struct Wheel {
     last_pos_rel: Vec3,
     hitbox: Hitbox,
     hitbox_pos_rel: Vec3,
-    collision: Option<Collision>,
+    collision: Collision,
 }
 
 impl Wheel {
@@ -49,7 +49,7 @@ impl Wheel {
             last_pos_rel,
             hitbox,
             hitbox_pos_rel: Vec3::ZERO,
-            collision: None,
+            collision: Collision::new(),
         }
     }
 
@@ -57,8 +57,8 @@ impl Wheel {
         self.hitbox_pos_rel
     }
 
-    pub fn collision(&self) -> Option<&Collision> {
-        self.collision.as_ref()
+    pub fn collision(&self) -> &Collision {
+        &self.collision
     }
 
     pub fn update(
@@ -84,19 +84,14 @@ impl Wheel {
         }
         self.hitbox.update_pos(hitbox_pos);
         self.hitbox_pos_rel = hitbox_pos - physics.pos;
-        let collision = kcl.check_collision(self.hitbox);
-        if let Some(collision) = collision {
-            self.pos += collision.min + collision.max;
-        }
+        let kcl_collision = kcl.check_collision(self.hitbox);
+        self.pos += kcl_collision.movement();
         self.hitbox.radius = bsp_wheel.hitbox_radius;
 
-        self.collision = collision.map(|collision| Collision {
-            floor_nor: collision.floor_nor,
-            speed_factor: stats.kcl_speed_factors[collision.closest_kind as usize],
-            rot_factor: stats.kcl_rot_factors[collision.closest_kind as usize],
-            has_boost_panel: collision.all_kinds & 0x40 != 0,
-            has_sticky_road: collision.all_kinds & 0x400000 != 0,
-        });
+        self.collision = Collision::new();
+        if kcl_collision.surface_kinds() & 0x20e80fff != 0 {
+            self.collision.add(stats, kcl_collision);
+        }
 
         self.axis_s = self.axis.dot(self.pos - self.topmost_pos);
         if self.axis_s < 0.0 {
@@ -119,7 +114,7 @@ impl Wheel {
         self.axis_s = self.axis.dot(self.pos - self.topmost_pos).clamp(0.0, bsp_wheel.slack_y);
         self.pos = self.topmost_pos + self.axis_s * self.axis;
 
-        if let Some(collision) = &self.collision {
+        if let Some(floor_nor) = self.collision.floor_nor() {
             let pos_rel = self.pos - topmost_pos;
             let dist = bsp_wheel.slack_y - self.axis.dot(pos_rel).max(0.0);
             let dist_acceleration = -bsp_wheel.dist_suspension * dist;
@@ -128,7 +123,7 @@ impl Wheel {
             let acceleration = (dist_acceleration + speed_acceleration) * self.axis;
             if physics.vel0.y <= 5.0 {
                 let normal_acceleration = Vec3::new(acceleration.x, 0.0, acceleration.z);
-                let normal_acceleration = normal_acceleration.proj_unit(collision.floor_nor).y;
+                let normal_acceleration = normal_acceleration.proj_unit(floor_nor).y;
                 let normal_acceleration = acceleration.y + normal_acceleration;
                 physics.normal_acceleration += normal_acceleration;
             }
@@ -144,8 +139,7 @@ impl Wheel {
         }
         self.last_pos_rel = self.pos - self.topmost_pos;
 
-        if let Some(collision) = &self.collision {
-            let floor_nor = collision.floor_nor;
+        if let Some(floor_nor) = self.collision.floor_nor() {
             let vel = self.pos - self.last_pos - physics.vel1;
             let dot = (vel + 10.0 * 1.3 * Vec3::DOWN).dot(floor_nor);
             if dot < 0.0 {

@@ -6,7 +6,7 @@ use crate::player::{Collision, CommonStats, Physics};
 pub struct VehicleBody {
     bsp_hitboxes: Vec<BspHitbox>,
     hitboxes: Vec<Hitbox>,
-    collision: Option<Collision>,
+    collision: Collision,
     has_floor_collision: bool,
 }
 
@@ -25,17 +25,13 @@ impl VehicleBody {
         VehicleBody {
             bsp_hitboxes,
             hitboxes,
-            collision: None,
+            collision: Collision::new(),
             has_floor_collision: false,
         }
     }
 
-    pub fn collision(&self) -> Option<&Collision> {
-        self.collision.as_ref()
-    }
-
-    pub fn override_collision(&mut self, collision: Collision) {
-        self.collision = Some(collision);
+    pub fn collision(&self) -> &Collision {
+        &self.collision
     }
 
     pub fn has_floor_collision(&self) -> bool {
@@ -49,53 +45,38 @@ impl VehicleBody {
         physics: &mut Physics,
         kcl: &Kcl,
     ) {
-        let mut count = 0;
         let (mut min, mut max) = (Vec3::ZERO, Vec3::ZERO);
-        let mut floor_nor = Vec3::ZERO;
-        let mut speed_factor: f32 = 1.0;
-        let mut rot_factor = 0.0;
-        let mut has_boost_panel = false;
         let mut pos_rel = Vec3::ZERO;
+        self.collision = Collision::new();
         for (bsp_hitbox, hitbox) in self.bsp_hitboxes.iter().zip(self.hitboxes.iter_mut()) {
             if !bsp_hitbox.walls_only {
                 let hitbox_pos_rel = physics.rot1.rotate(bsp_hitbox.pos);
                 let pos = hitbox_pos_rel + physics.pos;
                 hitbox.update_pos(pos);
-                if let Some(collision) = kcl.check_collision(*hitbox) {
-                    count += 1;
 
-                    let movement = collision.min + collision.max;
-                    min = min.min(movement);
-                    max = max.max(movement);
+                let kcl_collision = kcl.check_collision(*hitbox);
 
-                    floor_nor += collision.floor_nor;
-                    let closest_kind = collision.closest_kind as usize;
-                    let hitbox_speed_factor = stats.kcl_speed_factors[closest_kind];
-                    speed_factor = speed_factor.min(hitbox_speed_factor);
-                    let hitbox_rot_factor = stats.kcl_rot_factors[closest_kind];
-                    rot_factor += hitbox_rot_factor;
-                    has_boost_panel = has_boost_panel || collision.all_kinds & 0x40 != 0;
+                if kcl_collision.surface_kinds() & 0x20e80fff != 0 {
+                    min = min.min(kcl_collision.movement());
+                    max = max.max(kcl_collision.movement());
 
-                    let nor = movement.normalize();
+                    let nor = kcl_collision.movement().normalize();
                     pos_rel = pos_rel + hitbox_pos_rel - bsp_hitbox.radius * nor;
+
+                    self.collision.add(stats, kcl_collision);
                 }
             }
         }
 
+        let count = self.collision.count();
         self.has_floor_collision = count > 0;
 
         if count > 0 {
             let movement = min + max;
             physics.pos += movement;
 
-            let floor_nor = floor_nor.normalize();
-            self.collision = Some(Collision {
-                floor_nor,
-                speed_factor,
-                rot_factor: rot_factor / count as f32,
-                has_boost_panel: false,
-                has_sticky_road: false,
-            });
+            self.collision.finalize();
+            self.collision.disable_boost_panels();
 
             let pos_rel = (1.0 / count as f32) * pos_rel;
 
@@ -107,9 +88,13 @@ impl VehicleBody {
                 vel.y += physics.vel1.y;
             }
 
-            physics.apply_rigid_body_motion(is_boosting, pos_rel, vel, floor_nor);
-        } else {
-            self.collision = None;
+            if let Some(floor_nor) = self.collision.floor_nor() {
+                physics.apply_rigid_body_motion(is_boosting, pos_rel, vel, floor_nor);
+            }
         }
+    }
+
+    pub fn insert_floor_nor(&mut self, floor_nor: Vec3) {
+        self.collision.insert_floor_nor(floor_nor);
     }
 }

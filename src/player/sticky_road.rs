@@ -1,6 +1,6 @@
 use crate::fs::Kcl;
 use crate::geom::{Hitbox, Vec3};
-use crate::player::{Physics, Wheel};
+use crate::player::{Collision, Physics};
 
 #[derive(Clone, Debug)]
 pub struct StickyRoad {
@@ -9,16 +9,16 @@ pub struct StickyRoad {
 
 impl StickyRoad {
     pub fn new() -> StickyRoad {
-        StickyRoad {
-            enabled: false,
-        }
+        StickyRoad { enabled: false }
     }
 
-    pub fn update(&mut self, physics: &mut Physics, wheels: &Vec<Wheel>, kcl: &Kcl) {
-        let has_sticky_road = wheels
-            .iter()
-            .filter_map(|wheel| wheel.collision())
-            .any(|collision| collision.has_sticky_road);
+    pub fn update<'a>(
+        &mut self,
+        physics: &mut Physics,
+        mut collisions: impl Iterator<Item = &'a Collision>,
+        kcl: &Kcl,
+    ) {
+        let has_sticky_road = collisions.any(Collision::has_sticky_road);
         if has_sticky_road {
             self.enabled = true;
         }
@@ -31,8 +31,12 @@ impl StickyRoad {
         let mut vel = physics.speed1 * physics.vel1_dir;
         for _ in 0..3 {
             let hitbox = Hitbox::new(pos + vel, None, 200.0, 0x400800);
-            if let Some(collision) = kcl.check_collision(hitbox) {
-                physics.vel1_dir = physics.vel1_dir.perp_in_plane(collision.floor_nor, true);
+
+            let kcl_collision = kcl.check_collision(hitbox);
+
+            if kcl_collision.surface_kinds() & 0x400800 != 0 {
+                let floor_nor = kcl_collision.floor_nor();
+                physics.vel1_dir = physics.vel1_dir.perp_in_plane(floor_nor, true);
                 return;
             }
 

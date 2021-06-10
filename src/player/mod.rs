@@ -2,6 +2,7 @@ mod bike;
 mod boost;
 mod collision;
 mod drift;
+mod floor_factors;
 mod handle;
 mod lean;
 mod params;
@@ -18,9 +19,7 @@ pub use handle::Handle;
 pub use params::{Character, Params, Vehicle};
 pub use stats::{CommonStats, Stats};
 
-use std::convert::identity;
 use std::iter;
-use std::ops::Add;
 
 use crate::fs::{Kcl, Rkg, U8};
 use crate::geom::{Mat33, Vec3};
@@ -32,6 +31,7 @@ use bike::Bike;
 use boost::{Boost, Kind as BoostKind};
 use collision::Collision;
 use drift::Drift;
+use floor_factors::FloorFactors;
 use lean::Lean;
 use physics::Physics;
 use start_boost::StartBoost;
@@ -46,12 +46,10 @@ pub struct Player {
     stats: Stats,
     rkg: Rkg,
     airtime: u32,
-    kcl_speed_factor: f32,
-    kcl_rot_factor: f32,
+    floor_factors: FloorFactors,
     start_boost: StartBoost,
     drift: Drift,
     boost: Boost,
-    offroad_invicibility: u16,
     turn: Turn,
     diving_rot: f32,
     mushroom_boost: u16,
@@ -123,12 +121,10 @@ impl Player {
             stats,
             rkg,
             airtime: 0,
-            kcl_speed_factor: 1.0,
-            kcl_rot_factor: 1.0,
+            floor_factors: FloorFactors::new(),
             start_boost: StartBoost::new(),
             drift,
             boost: Boost::new(),
-            offroad_invicibility: 0,
             turn,
             diving_rot: 0.0,
             mushroom_boost: 0,
@@ -148,18 +144,13 @@ impl Player {
     pub fn update(&mut self, kcl: &Kcl, timer: &Timer) {
         self.physics.rot_vec2 = Vec3::ZERO;
 
-        let wheel_collision_count = self
+        let collisions = self
             .wheels
             .iter()
-            .filter(|wheel| wheel.collision().is_some())
-            .count();
-        let vehicle_body_floor_collision_count = if self.vehicle_body.has_floor_collision() {
-            1
-        } else {
-            0
-        };
-        let floor_collision_count = wheel_collision_count + vehicle_body_floor_collision_count;
-        let ground = floor_collision_count > 0;
+            .map(|wheel| wheel.collision())
+            .chain(iter::once(self.vehicle_body.collision()));
+
+        let ground = collisions.clone().any(|collision| collision.floor_nor().is_some());
         let (is_landing, airtime) = if ground {
             (self.airtime >= 3, 0)
         } else {
@@ -185,58 +176,30 @@ impl Player {
             self.drift.has_hop_height(),
             is_wheelieing,
             self.boost.is_boosting(),
-            &self.vehicle_body,
-            &self.wheels,
+            collisions.clone(),
         );
 
-        let has_boost_panel = self
-            .wheels
-            .iter()
-            .filter_map(|wheel| wheel.collision())
-            .any(|collision| collision.has_boost_panel);
+        let has_boost_panel = collisions.clone().any(Collision::has_boost_panel);
         if has_boost_panel {
             self.boost.activate(BoostKind::Strong, 60);
-            self.offroad_invicibility = self.offroad_invicibility.max(60);
+            self.floor_factors.activate_invicibility(60);
         }
 
-        self.physics.update_dir(self.airtime, is_landing, self.kcl_rot_factor, &self.drift);
+        self.physics.update_dir(
+            self.airtime,
+            is_landing,
+            self.floor_factors.rot_factor(),
+            &self.drift,
+        );
 
-        self.sticky_road.update(&mut self.physics, &self.wheels, kcl);
+        self.sticky_road.update(&mut self.physics, collisions.clone(), kcl);
 
-        let kcl_speed_factor_min = self
-            .wheels
-            .iter()
-            .map(|wheel| wheel.collision())
-            .chain(iter::once(self.vehicle_body.collision()))
-            .filter_map(identity)
-            .map(|collision| collision.speed_factor)
-            .reduce(|sf0, sf1| sf0.min(sf1));
-        if self.offroad_invicibility > 0 {
-            self.kcl_speed_factor = self.stats.common.kcl_speed_factors[0];
-        } else if let Some(kcl_speed_factor_min) = kcl_speed_factor_min {
-            self.kcl_speed_factor = kcl_speed_factor_min;
-        }
-
-        let kcl_rot_factor_sum = self
-            .wheels
-            .iter()
-            .map(|wheel| wheel.collision())
-            .chain(iter::once(self.vehicle_body.collision()))
-            .filter_map(identity)
-            .map(|collision| collision.rot_factor)
-            .reduce(Add::add);
-        if self.offroad_invicibility > 0 {
-            self.kcl_rot_factor = self.stats.common.kcl_rot_factors[0];
-        } else if let Some(kcl_rot_factor_sum) = kcl_rot_factor_sum {
-            let has_both = wheel_collision_count > 0 && self.vehicle_body.collision().is_some();
-            let floor_collision_count = if has_both {
-                // This is a bug in the game
-                floor_collision_count + 1
-            } else {
-                floor_collision_count
-            };
-            self.kcl_rot_factor = kcl_rot_factor_sum / floor_collision_count as f32;
-        }
+        self.floor_factors.update_factors(
+            &self.stats.common,
+            &self.vehicle_body,
+            &self.wheels,
+            collisions,
+        );
 
         let frame_idx = timer.frame_idx();
         let stick_x = self.rkg.stick_x(frame_idx);
@@ -274,7 +237,7 @@ impl Player {
 
         self.mushroom_boost = self.mushroom_boost.saturating_sub(1);
 
-        self.offroad_invicibility = self.offroad_invicibility.saturating_sub(1);
+        self.floor_factors.update_invicibility();
 
         let last_accelerate = timer
             .frame_idx()
@@ -298,7 +261,7 @@ impl Player {
             last_accelerate,
             last_brake,
             self.airtime,
-            self.kcl_speed_factor,
+            self.floor_factors.speed_factor(),
             self.drift.is_drifting(),
             &self.boost,
             self.turn.raw(),
@@ -387,11 +350,11 @@ impl Player {
                 min = min.min(vehicle_movement);
                 max = max.max(vehicle_movement);
 
-                if let Some(collision) = wheel.collision() {
+                if let Some(wheel_floor_nor) = wheel.collision().floor_nor() {
                     count += 1;
                     pos_rel += wheel.hitbox_pos_rel();
                     vel += 10.0 * 1.3 * Vec3::DOWN;
-                    floor_nor += collision.floor_nor;
+                    floor_nor += wheel_floor_nor;
                 }
             }
         }
@@ -399,18 +362,12 @@ impl Player {
         let vehicle_movement = min + max;
         self.physics.pos += vehicle_movement;
 
-        if count > 0 && self.vehicle_body.collision().is_none() {
+        if count > 0 && self.vehicle_body.collision().floor_nor().is_none() {
             let pos_rel = (1.0 / count as f32) * pos_rel;
             let vel = (1.0 / count as f32) * vel;
             let floor_nor = floor_nor.normalize();
             self.physics.apply_rigid_body_motion(self.boost.is_boosting(), pos_rel, vel, floor_nor);
-            self.vehicle_body.override_collision(Collision {
-                floor_nor,
-                speed_factor: 1.0,
-                rot_factor: 1.0,
-                has_boost_panel: false,
-                has_sticky_road: false,
-            });
+            self.vehicle_body.insert_floor_nor(floor_nor);
         }
 
         for wheel in &mut self.wheels {
@@ -428,7 +385,7 @@ impl Player {
             .unwrap_or(false);
         if self.rkg.use_item(timer.frame_idx()) && !last_use_item {
             self.boost.activate(BoostKind::Strong, 90);
-            self.offroad_invicibility = self.offroad_invicibility.max(90);
+            self.floor_factors.activate_invicibility(90);
             self.mushroom_boost = 90;
         }
     }

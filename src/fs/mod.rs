@@ -13,7 +13,7 @@ mod u8;
 
 pub use self::u8::U8;
 pub use bsp::{Bsp, Hitbox as BspHitbox, Wheel as BspWheel};
-pub use kcl::Kcl;
+pub use kcl::{Collision as KclCollision, Kcl};
 pub use kmp::Kmp;
 pub use parse::{Bits, Error, Parse, ResultExt, SliceExt, SliceRefExt};
 pub use rkg::{Rkg, Trick as RkgTrick};

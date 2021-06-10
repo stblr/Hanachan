@@ -1,11 +1,14 @@
+mod collision;
 mod header;
 mod octree;
 mod tri;
 
+pub use collision::Collision;
+
 use std::iter;
 
 use crate::fs::{Error, Parse, ResultExt, SliceExt, SliceRefExt};
-use crate::geom::{Hitbox, Vec3};
+use crate::geom::Hitbox;
 
 use header::Header;
 use octree::Octree;
@@ -19,42 +22,22 @@ pub struct Kcl {
 }
 
 impl Kcl {
-    pub fn check_collision(&self, hitbox: Hitbox) -> Option<Collision> {
-        let tri_list = self.octree.find_tri_list(&self.header, hitbox.pos)?;
-        let mut found = false;
-        let (mut min, mut max) = (Vec3::ZERO, Vec3::ZERO);
-        let mut floor_dist = 0.0;
-        let mut floor_nor = Vec3::ZERO;
-        let mut closest_kind = 0;
-        let mut all_kinds = 0;
+    pub fn check_collision(&self, hitbox: Hitbox) -> Collision {
+        let mut collision = Collision::new();
+
+        let tri_list = match self.octree.find_tri_list(&self.header, hitbox.pos) {
+            Some(tri_list) => tri_list,
+            None => return collision,
+        };
 
         for tri_idx in tri_list.iter() {
             let tri = &self.tris[*tri_idx as usize];
-            if let Some(collision) = tri.check_collision(self.header.thickness, hitbox) {
-                found = true;
-                min = min.min(collision.dist * collision.nor);
-                max = max.max(collision.dist * collision.nor);
-                all_kinds |= 1 << (collision.flags & 0x1f);
-                if collision.dist > floor_dist {
-                    floor_dist = collision.dist;
-                    floor_nor = collision.nor;
-                    closest_kind = (collision.flags & 0x1f) as u8;
-                }
+            if let Some(tri_collision) = tri.check_collision(self.header.thickness, hitbox) {
+                collision.add(tri_collision);
             }
         }
 
-        if found {
-            Some(Collision {
-                min,
-                max,
-                floor_dist,
-                floor_nor,
-                closest_kind,
-                all_kinds,
-            })
-        } else {
-            None
-        }
+        collision
     }
 }
 
@@ -92,14 +75,4 @@ impl Parse for Kcl {
             octree,
         })
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Collision {
-    pub min: Vec3,
-    pub max: Vec3,
-    pub floor_dist: f32,
-    pub floor_nor: Vec3,
-    pub closest_kind: u8,
-    pub all_kinds: u32,
 }

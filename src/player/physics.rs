@@ -1,10 +1,8 @@
-use std::convert::identity;
-use std::iter;
 use std::ops::Add;
 
 use crate::fs::Bsp;
 use crate::geom::{Hitbox, Mat33, Mat34, Quat, Vec3};
-use crate::player::{Boost, Drift, Stats, VehicleBody, Wheel};
+use crate::player::{Boost, Collision, Drift, Stats};
 use crate::race::{Stage, Timer};
 use crate::track::Track;
 use crate::wii::F32Ext;
@@ -66,10 +64,9 @@ impl Physics {
         let mut pos = ktpt_pos + diff0 + diff1;
 
         let hitbox = Hitbox::new(pos, None, 100.0, 0x20e80fff);
-        if let Some(collision) = track.kcl().check_collision(hitbox) {
-            pos = pos + (collision.min + collision.max) - 100.0 * collision.floor_nor;
-            pos += bsp.initial_pos_y * collision.floor_nor;
-        }
+        let collision = track.kcl().check_collision(hitbox);
+        pos = pos + collision.movement() - 100.0 * collision.floor_nor();
+        pos += bsp.initial_pos_y * collision.floor_nor();
 
         Physics {
             inv_inertia_tensor,
@@ -103,7 +100,7 @@ impl Physics {
         self.mat
     }
 
-    pub fn update_floor_nor(
+    pub fn update_floor_nor<'a>(
         &mut self,
         is_inside_drift: bool,
         airtime: u32,
@@ -111,15 +108,10 @@ impl Physics {
         has_hop_height: bool,
         is_boosting: bool,
         is_wheelieing: bool,
-        vehicle_body: &VehicleBody,
-        wheels: &Vec<Wheel>,
+        collisions: impl Iterator<Item = &'a Collision>,
     ) {
-        let next_up = wheels
-            .iter()
-            .map(|wheel| wheel.collision())
-            .chain(iter::once(vehicle_body.collision()))
-            .filter_map(identity)
-            .map(|collision| collision.floor_nor)
+        let next_up = collisions
+            .filter_map(Collision::floor_nor)
             .reduce(Add::add)
             .map(|floor_nor| floor_nor.normalize())
             .unwrap_or(Vec3::UP);
@@ -170,7 +162,7 @@ impl Physics {
         &mut self,
         airtime: u32,
         is_landing: bool,
-        kcl_rot_factor: f32,
+        floor_rot_factor: f32,
         drift: &Drift,
     ) {
         if airtime > 5 {
@@ -195,7 +187,7 @@ impl Physics {
             self.dir_diff = Vec3::ZERO;
         } else {
             let axis = self.dir.cross(next_dir);
-            let next_dir_diff = self.dir_diff + kcl_rot_factor * next_dir_diff;
+            let next_dir_diff = self.dir_diff + floor_rot_factor * next_dir_diff;
             self.dir = (self.dir + next_dir_diff).normalize();
             self.dir_diff = 0.1 * next_dir_diff;
             let next_axis = self.dir.cross(next_dir);
@@ -228,7 +220,7 @@ impl Physics {
         last_accelerate: bool,
         last_brake: bool,
         airtime: u32,
-        kcl_speed_factor: f32,
+        floor_speed_factor: f32,
         is_drifting: bool,
         boost: &Boost,
         raw_turn: f32,
@@ -279,9 +271,9 @@ impl Physics {
         let base_speed = stats.common.base_speed;
         let boost_factor = boost.factor();
         let wheelie_bonus = if is_wheelieing { 0.15 } else { 0.0 };
-        let mut next_soft_limit = (boost_factor + wheelie_bonus) * kcl_speed_factor * base_speed;
+        let mut next_soft_limit = (boost_factor + wheelie_bonus) * floor_speed_factor * base_speed;
         if let Some(boost_limit) = boost.limit() {
-            let boost_limit = boost_limit * kcl_speed_factor;
+            let boost_limit = boost_limit * floor_speed_factor;
             next_soft_limit = next_soft_limit.max(boost_limit);
         }
         self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_soft_limit);

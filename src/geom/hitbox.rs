@@ -10,7 +10,12 @@ pub struct Hitbox {
 
 impl Hitbox {
     pub fn new(pos: Vec3, last_pos: Option<Vec3>, radius: f32, flags: u32) -> Hitbox {
-        Hitbox { pos, last_pos, radius, flags }
+        Hitbox {
+            pos,
+            last_pos,
+            radius,
+            flags,
+        }
     }
 
     pub fn update_pos(&mut self, pos: Vec3) {
