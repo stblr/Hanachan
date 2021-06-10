@@ -34,11 +34,12 @@ impl Wheelie {
         &mut self,
         base_speed: f32,
         trick_input: Option<RkgTrick>,
+        ground: bool,
         drift: &Drift,
         physics: &mut Physics,
     ) {
         match trick_input {
-            Some(RkgTrick::Up) => self.try_start(drift),
+            Some(RkgTrick::Up) => self.try_start(ground, drift),
             Some(RkgTrick::Down) => self.try_cancel(),
             _ => (),
         }
@@ -65,13 +66,21 @@ impl Wheelie {
         }
     }
 
-    fn try_start(&mut self, drift: &Drift) {
-        let is_hopping = drift.is_hopping();
-        let is_drifting = drift.is_drifting();
-        if !self.is_wheelieing && self.cooldown == 0 && !is_hopping && !is_drifting {
-            self.is_wheelieing = true;
-            self.cooldown = 20;
+    fn try_start(&mut self, ground: bool, drift: &Drift) {
+        if self.is_wheelieing || self.cooldown > 0 {
+            return;
         }
+
+        if !ground {
+            return;
+        }
+
+        if drift.is_hopping() || drift.is_drifting() {
+            return;
+        }
+
+        self.is_wheelieing = true;
+        self.cooldown = 20;
     }
 
     fn try_cancel(&mut self) {

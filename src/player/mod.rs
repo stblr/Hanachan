@@ -231,10 +231,10 @@ impl Player {
         );
 
         if let Some(bike) = &mut self.bike {
-            let base_speed = self.stats.common.base_speed;
             bike.wheelie.update(
-                base_speed,
+                self.stats.common.base_speed,
                 self.rkg.trick(frame_idx),
+                ground,
                 &self.drift,
                 &mut self.physics,
             );
