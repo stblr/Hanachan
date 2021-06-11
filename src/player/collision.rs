@@ -1,4 +1,4 @@
-use crate::fs::{KclJumpPadVariant, KclCollision};
+use crate::fs::{KclBoostRampVariant, KclJumpPadVariant, KclCollision};
 use crate::geom::Vec3;
 use crate::player::CommonStats;
 
@@ -9,6 +9,8 @@ pub struct Collision {
     speed_factor: f32,
     rot_factor: f32,
     has_boost_panel: bool,
+    has_boost_ramp: bool,
+    boost_ramp: Option<KclBoostRampVariant>,
     jump_pad: Option<KclJumpPadVariant>,
     has_sticky_road: bool,
 }
@@ -21,6 +23,8 @@ impl Collision {
             speed_factor: 1.0,
             rot_factor: 0.0,
             has_boost_panel: false,
+            has_boost_ramp: false,
+            boost_ramp: None,
             jump_pad: None,
             has_sticky_road: false,
         }
@@ -46,6 +50,10 @@ impl Collision {
         self.has_boost_panel
     }
 
+    pub fn has_boost_ramp(&self) -> bool {
+        self.has_boost_ramp
+    }
+
     pub fn jump_pad(&self) -> Option<KclJumpPadVariant> {
         self.jump_pad
     }
@@ -66,6 +74,13 @@ impl Collision {
 
             if kcl_collision.surface_kinds() & 0x40 != 0 {
                 self.has_boost_panel = true;
+            }
+
+            if let Some(surface) = kcl_collision.find_closest(0x80) {
+                self.has_boost_ramp = true;
+                self.boost_ramp = Some(KclBoostRampVariant::new((surface >> 5 & 7) as u8));
+            } else {
+                self.boost_ramp = None;
             }
 
             if let Some(surface) = kcl_collision.find_closest(0x100) {

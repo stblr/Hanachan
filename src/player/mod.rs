@@ -1,5 +1,6 @@
 mod bike;
 mod boost;
+mod boost_ramp;
 mod collision;
 mod drift;
 mod floor_factors;
@@ -30,6 +31,7 @@ use crate::wii::F32Ext;
 
 use bike::Bike;
 use boost::{Boost, Kind as BoostKind};
+use boost_ramp::BoostRamp;
 use collision::Collision;
 use drift::Drift;
 use floor_factors::FloorFactors;
@@ -56,6 +58,7 @@ pub struct Player {
     diving_rot: f32,
     mushroom_boost: u16,
     standstill_boost_rot: f32, // TODO maybe rename
+    boost_ramp: BoostRamp,
     jump_pad: JumpPad,
     bike: Option<Bike>,
     sticky_road: StickyRoad,
@@ -132,6 +135,7 @@ impl Player {
             diving_rot: 0.0,
             mushroom_boost: 0,
             standstill_boost_rot: 0.0,
+            boost_ramp: BoostRamp::new(),
             jump_pad: JumpPad::new(),
             bike,
             sticky_road: StickyRoad::new(),
@@ -193,6 +197,8 @@ impl Player {
             self.floor_factors.activate_invicibility(60);
         }
 
+        self.boost_ramp.try_start(collisions.clone());
+
         self.jump_pad.try_start(&mut self.physics, collisions.clone());
 
         self.physics.update_dir(
@@ -246,6 +252,8 @@ impl Player {
 
         self.boost.update();
 
+        self.boost_ramp.update();
+
         self.mushroom_boost = self.mushroom_boost.saturating_sub(1);
 
         self.floor_factors.update_invicibility();
@@ -276,6 +284,7 @@ impl Player {
             self.drift.is_drifting(),
             &self.boost,
             self.turn.raw(),
+            self.boost_ramp.enabled(),
             self.jump_pad.speed(),
             is_wheelieing,
             timer,

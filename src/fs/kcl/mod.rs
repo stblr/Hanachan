@@ -1,9 +1,11 @@
+mod boost_ramp_variant;
 mod collision;
 mod header;
 mod jump_pad_variant;
 mod octree;
 mod tri;
 
+pub use boost_ramp_variant::BoostRampVariant;
 pub use collision::Collision;
 pub use jump_pad_variant::JumpPadVariant;
 

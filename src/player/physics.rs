@@ -227,6 +227,7 @@ impl Physics {
         is_drifting: bool,
         boost: &Boost,
         raw_turn: f32,
+        boost_ramp_enabled: bool,
         jump_pad_speed: Option<f32>,
         is_wheelieing: bool,
         timer: &Timer,
@@ -246,6 +247,8 @@ impl Physics {
             }
         } else if let Some(boost_acceleration) = boost.acceleration() {
             acceleration = boost_acceleration;
+        } else if boost_ramp_enabled || jump_pad_speed.is_some() {
+            acceleration = 7.0;
         } else {
             if timer.stage() == Stage::Race && accelerate {
                 let (ys, xs): (&[f32], &[f32]) = if is_drifting {
@@ -279,6 +282,9 @@ impl Physics {
         if let Some(boost_limit) = boost.limit() {
             let boost_limit = boost_limit * floor_speed_factor;
             next_soft_limit = next_soft_limit.max(boost_limit);
+        }
+        if boost_ramp_enabled {
+            next_soft_limit = next_soft_limit.max(100.0);
         }
         self.speed1_soft_limit = (self.speed1_soft_limit - 3.0).max(next_soft_limit);
         self.speed1_soft_limit = (self.speed1_soft_limit).min(120.0);
