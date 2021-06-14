@@ -206,6 +206,7 @@ impl Player {
             last_airtime,
             self.floor_factors.rot_factor(),
             &self.drift,
+            self.boost_ramp.enabled(),
             self.jump_pad.enabled()
         );
 

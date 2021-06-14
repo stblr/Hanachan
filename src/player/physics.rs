@@ -170,9 +170,10 @@ impl Physics {
         last_airtime: u32,
         floor_rot_factor: f32,
         drift: &Drift,
+        boost_ramp_enabled: bool,
         jump_pad_enabled: bool,
     ) {
-        if airtime > 5 || jump_pad_enabled {
+        if (airtime > 0 && boost_ramp_enabled) || (airtime > 5 || jump_pad_enabled) {
             self.vel1_dir = self.dir;
             return;
         }
