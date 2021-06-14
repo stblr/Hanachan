@@ -215,7 +215,7 @@ impl Physics {
         }
     }
 
-    pub fn update_vel1(
+    pub fn update_vel1<'a>(
         &mut self,
         stats: &Stats,
         accelerate: bool,
@@ -230,6 +230,7 @@ impl Physics {
         boost_ramp_enabled: bool,
         jump_pad_speed: Option<f32>,
         is_wheelieing: bool,
+        mut collisions: impl Iterator<Item = &'a Collision>,
         timer: &Timer,
     ) {
         let last_speed_ratio = (self.speed1 / stats.common.base_speed).min(1.0);
@@ -291,7 +292,15 @@ impl Physics {
         self.speed1 = self.speed1.min(self.speed1_soft_limit);
 
         let right = self.smoothed_up.cross(self.dir);
-        let angle = if ground { 0.5_f32 } else { 0.2_f32 }.to_radians();
+        let has_boost_ramp = collisions.any(Collision::has_boost_ramp);
+        let angle: f32 = if has_boost_ramp {
+            4.0
+        } else if ground {
+            0.5
+        } else {
+            0.2
+        };
+        let angle = angle.to_radians();
         self.vel1_dir = Mat33::from(Mat34::from_axis_angle(right, angle)) * self.vel1_dir;
         self.vel1 = self.speed1 * self.vel1_dir;
     }

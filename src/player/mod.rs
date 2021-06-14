@@ -215,7 +215,7 @@ impl Player {
             &self.stats.common,
             &self.vehicle_body,
             &self.wheels,
-            collisions,
+            collisions.clone(),
         );
 
         let frame_idx = timer.frame_idx();
@@ -287,6 +287,7 @@ impl Player {
             self.boost_ramp.enabled(),
             self.jump_pad.speed(),
             is_wheelieing,
+            collisions,
             timer,
         );
 
