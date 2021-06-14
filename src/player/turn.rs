@@ -46,6 +46,7 @@ impl Turn {
         stats: &CommonStats,
         airtime: u32,
         drift: &Drift,
+        boost_ramp_enabled: bool,
         is_wheelieing: bool,
         physics: &mut Physics,
     ) {
@@ -76,6 +77,10 @@ impl Turn {
             30..=70 => ((1.0 - 0.025 * (airtime - 30) as f32) * rot).max(0.0),
             _ => 0.0,
         };
+
+        if airtime > 0 && boost_ramp_enabled {
+            rot = 0.0;
+        }
 
         let front = physics.rot0.rotate(Vec3::FRONT);
         let cross = front.cross(physics.dir);

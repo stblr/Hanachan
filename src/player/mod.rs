@@ -334,6 +334,7 @@ impl Player {
             &self.stats.common,
             self.airtime,
             &self.drift,
+            self.boost_ramp.enabled(),
             is_wheelieing,
             &mut self.physics,
         );
