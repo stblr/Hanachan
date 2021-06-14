@@ -248,7 +248,9 @@ impl Physics {
 
         let mut acceleration = 0.0;
         if !ground {
-            if airtime > 5 {
+            if boost_ramp_enabled && airtime < 4 {
+                acceleration = 7.0;
+            } else if airtime > 5 {
                 self.speed1 *= 0.999;
             }
         } else if let Some(boost_acceleration) = boost.acceleration() {
