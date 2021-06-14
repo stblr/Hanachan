@@ -108,9 +108,10 @@ impl Physics {
         has_hop_height: bool,
         is_boosting: bool,
         is_wheelieing: bool,
-        collisions: impl Iterator<Item = &'a Collision>,
+        mut collisions: impl Iterator<Item = &'a Collision> + Clone,
     ) {
         let next_up = collisions
+            .clone()
             .filter_map(Collision::floor_nor)
             .reduce(Add::add)
             .map(|floor_nor| floor_nor.normalize())
@@ -155,6 +156,10 @@ impl Physics {
             let dot = front.dot(self.smoothed_up);
             if dot < -0.1 {
                 self.stabilization_factor += (0.5 * dot.abs()).min(0.2);
+            }
+
+            if collisions.any(Collision::has_boost_ramp) {
+                self.stabilization_factor = 0.4;
             }
         }
     }
