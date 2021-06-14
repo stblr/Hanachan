@@ -290,7 +290,12 @@ impl Player {
             timer,
         );
 
-        self.update_standstill_boost_rot(ground, self.jump_pad.enabled(), timer);
+        self.update_standstill_boost_rot(
+            ground,
+            self.boost_ramp.enabled(),
+            self.jump_pad.enabled(),
+            timer,
+        );
 
         if let Some(bike) = &mut self.bike {
             self.physics.rot_vec2.x += self.standstill_boost_rot;
@@ -412,13 +417,19 @@ impl Player {
         }
     }
 
-    fn update_standstill_boost_rot(&mut self, ground: bool, jump_pad_enabled: bool, timer: &Timer) {
+    fn update_standstill_boost_rot(
+        &mut self,
+        ground: bool,
+        boost_ramp_enabled: bool,
+        jump_pad_enabled: bool,
+        timer: &Timer,
+    ) {
         let mut next = 0.0;
         let mut t = 1.0;
         if ground {
             if timer.stage() == Stage::Countdown {
                 next = 0.015 * -self.start_boost.charge;
-            } else if !jump_pad_enabled {
+            } else if !boost_ramp_enabled && !jump_pad_enabled {
                 let acceleration = self.physics.speed1 - self.physics.last_speed1;
                 let acceleration = acceleration.clamp(-3.0, 3.0);
 
