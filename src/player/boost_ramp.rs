@@ -1,5 +1,3 @@
-use crate::player::Collision;
-
 #[derive(Clone, Debug)]
 pub struct BoostRamp {
     duration: u16,
@@ -7,17 +5,15 @@ pub struct BoostRamp {
 
 impl BoostRamp {
     pub fn new() -> BoostRamp {
-        BoostRamp {
-            duration: 0,
-        }
+        BoostRamp { duration: 0 }
     }
 
     pub fn enabled(&self) -> bool {
         self.duration > 0
     }
 
-    pub fn try_start<'a>(&mut self, mut collisions: impl Iterator<Item = &'a Collision>) {
-        if collisions.any(Collision::has_boost_ramp) {
+    pub fn try_start(&mut self, has_boost_ramp: bool) {
+        if has_boost_ramp {
             self.duration = 60;
         }
     }

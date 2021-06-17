@@ -1,6 +1,6 @@
 use crate::fs::Kcl;
 use crate::geom::{Hitbox, Vec3};
-use crate::player::{Collision, Physics};
+use crate::player::Physics;
 
 #[derive(Clone, Debug)]
 pub struct StickyRoad {
@@ -12,13 +12,7 @@ impl StickyRoad {
         StickyRoad { enabled: false }
     }
 
-    pub fn update<'a>(
-        &mut self,
-        physics: &mut Physics,
-        mut collisions: impl Iterator<Item = &'a Collision>,
-        kcl: &Kcl,
-    ) {
-        let has_sticky_road = collisions.any(Collision::has_sticky_road);
+    pub fn update<'a>(&mut self, physics: &mut Physics, has_sticky_road: bool, kcl: &Kcl) {
         if has_sticky_road {
             self.enabled = true;
         }

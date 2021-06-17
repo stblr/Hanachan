@@ -1,6 +1,6 @@
 use crate::fs::{BspWheel, Kcl};
 use crate::geom::{Hitbox, Mat33, Mat34, Vec3};
-use crate::player::{Bike, Collision, CommonStats, Handle, Physics};
+use crate::player::{Bike, Collision, CommonStats, Handle, Physics, SurfaceProps};
 use crate::wii::F32Ext;
 
 #[derive(Clone, Debug)]
@@ -66,6 +66,7 @@ impl Wheel {
         stats: &CommonStats,
         bike: Option<&Bike>,
         physics: &mut Physics,
+        surface_props: &mut SurfaceProps,
         kcl: &Kcl,
     ) -> Option<Vec3> {
         let bsp_wheel = self.bsp_wheel;
@@ -90,7 +91,8 @@ impl Wheel {
 
         self.collision = Collision::new();
         if kcl_collision.surface_kinds() & 0x20e80fff != 0 {
-            self.collision.add(stats, kcl_collision);
+            self.collision.add(stats, &kcl_collision);
+            surface_props.add(&kcl_collision, true);
         }
 
         self.axis_s = self.axis.dot(self.pos - self.topmost_pos);

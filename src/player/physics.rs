@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use crate::fs::Bsp;
 use crate::geom::{Hitbox, Mat33, Mat34, Quat, Vec3};
-use crate::player::{Boost, Collision, Drift, Stats};
+use crate::player::{Boost, Drift, Floor, Stats, SurfaceProps};
 use crate::race::{Stage, Timer};
 use crate::track::Track;
 use crate::wii::F32Ext;
@@ -100,33 +100,24 @@ impl Physics {
         self.mat
     }
 
-    pub fn update_floor_nor<'a>(
+    pub fn update_ups<'a>(
         &mut self,
         is_inside_drift: bool,
-        airtime: u32,
-        last_airtime: u32,
+        floor: &Floor,
         has_hop_height: bool,
         is_boosting: bool,
         is_wheelieing: bool,
-        mut collisions: impl Iterator<Item = &'a Collision> + Clone,
+        has_boost_ramp: bool,
     ) {
-        let next_up = collisions
-            .clone()
-            .filter_map(Collision::floor_nor)
-            .reduce(Add::add)
-            .map(|floor_nor| floor_nor.normalize())
-            .unwrap_or(Vec3::UP);
-
         self.stabilization_factor = 0.1;
-        let is_landing = airtime == 0 && last_airtime >= 3;
-        if is_landing {
-            self.up = next_up;
+        if floor.is_landing() && floor.last_airtime() >= 3 {
+            self.up = floor.nor().unwrap();
             self.smoothed_up = self.up;
             let landing_dir = self.dir.perp_in_plane(self.smoothed_up, true);
             self.dir_diff = landing_dir.proj_unit(landing_dir);
         } else if has_hop_height {
             self.stabilization_factor = if is_inside_drift { 0.22 } else { 0.5 };
-        } else if airtime > 20 {
+        } else if floor.airtime() > 20 {
             if self.up.y > 0.99 {
                 self.up = Vec3::UP;
             } else {
@@ -140,8 +131,8 @@ impl Physics {
                 self.smoothed_up += 0.03 * (Vec3::UP - self.smoothed_up);
                 self.smoothed_up = self.smoothed_up.normalize();
             }
-        } else if airtime == 0 {
-            self.up = next_up;
+        } else if floor.airtime() == 0 {
+            self.up = floor.nor().unwrap();
 
             let smoothing_factor = if is_boosting || is_wheelieing {
                 0.8
@@ -158,21 +149,21 @@ impl Physics {
                 self.stabilization_factor += (0.5 * dot.abs()).min(0.2);
             }
 
-            if collisions.any(Collision::has_boost_ramp) {
+            if has_boost_ramp {
                 self.stabilization_factor = 0.4;
             }
         }
     }
 
-    pub fn update_dir(
+    pub fn update_dirs(
         &mut self,
-        airtime: u32,
-        last_airtime: u32,
+        floor: &Floor,
         floor_rot_factor: f32,
         drift: &Drift,
         boost_ramp_enabled: bool,
         jump_pad_enabled: bool,
     ) {
+        let airtime = floor.airtime();
         if (airtime > 0 && boost_ramp_enabled) || (airtime > 5 || jump_pad_enabled) {
             self.vel1_dir = self.dir;
             return;
@@ -206,8 +197,7 @@ impl Physics {
         }
         self.vel1_dir = self.dir.perp_in_plane(self.smoothed_up, true);
 
-        let is_landing = airtime == 0 && last_airtime >= 3;
-        if is_landing {
+        if floor.is_landing() && floor.last_airtime() >= 3 {
             let cross = self.dir.cross(landing_dir);
             let norm = cross.sq_norm().wii_sqrt();
             let dot = self.dir.dot(landing_dir);
@@ -236,7 +226,7 @@ impl Physics {
         boost_ramp_enabled: bool,
         jump_pad_speed: Option<f32>,
         is_wheelieing: bool,
-        mut collisions: impl Iterator<Item = &'a Collision>,
+        surface_props: &SurfaceProps,
         timer: &Timer,
     ) {
         let last_speed_ratio = (self.speed1 / stats.common.base_speed).min(1.0);
@@ -300,8 +290,7 @@ impl Physics {
         self.speed1 = self.speed1.min(self.speed1_soft_limit);
 
         let right = self.smoothed_up.cross(self.dir);
-        let has_boost_ramp = collisions.any(Collision::has_boost_ramp);
-        let angle: f32 = if has_boost_ramp {
+        let angle: f32 = if surface_props.has_boost_ramp() {
             4.0
         } else if ground {
             0.5

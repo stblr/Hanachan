@@ -3,6 +3,7 @@ mod boost;
 mod boost_ramp;
 mod collision;
 mod drift;
+mod floor;
 mod floor_factors;
 mod handle;
 mod jump_pad;
@@ -12,6 +13,7 @@ mod physics;
 mod start_boost;
 mod stats;
 mod sticky_road;
+mod surface_props;
 mod turn;
 mod vehicle_body;
 mod wheel;
@@ -20,8 +22,6 @@ mod wheelie;
 pub use handle::Handle;
 pub use params::{Character, Params, Vehicle};
 pub use stats::{CommonStats, Stats};
-
-use std::iter;
 
 use crate::fs::{Kcl, Rkg, U8};
 use crate::geom::{Mat33, Vec3};
@@ -34,12 +34,14 @@ use boost::{Boost, Kind as BoostKind};
 use boost_ramp::BoostRamp;
 use collision::Collision;
 use drift::Drift;
+use floor::Floor;
 use floor_factors::FloorFactors;
 use jump_pad::JumpPad;
 use lean::Lean;
 use physics::Physics;
 use start_boost::StartBoost;
 use sticky_road::StickyRoad;
+use surface_props::SurfaceProps;
 use turn::Turn;
 use vehicle_body::VehicleBody;
 use wheel::Wheel;
@@ -49,7 +51,7 @@ use wheelie::Wheelie;
 pub struct Player {
     stats: Stats,
     rkg: Rkg,
-    airtime: u32,
+    floor: Floor,
     floor_factors: FloorFactors,
     start_boost: StartBoost,
     drift: Drift,
@@ -65,6 +67,7 @@ pub struct Player {
     physics: Physics,
     vehicle_body: VehicleBody,
     wheels: Vec<Wheel>,
+    surface_props: SurfaceProps,
 }
 
 impl Player {
@@ -126,7 +129,7 @@ impl Player {
         Some(Player {
             stats,
             rkg,
-            airtime: 0,
+            floor: Floor::new(),
             floor_factors: FloorFactors::new(),
             start_boost: StartBoost::new(),
             drift,
@@ -142,6 +145,7 @@ impl Player {
             physics,
             vehicle_body,
             wheels,
+            surface_props: SurfaceProps::new(),
         })
     }
 
@@ -152,19 +156,7 @@ impl Player {
     pub fn update(&mut self, kcl: &Kcl, timer: &Timer) {
         self.physics.rot_vec2 = Vec3::ZERO;
 
-        let collisions = self
-            .wheels
-            .iter()
-            .map(|wheel| wheel.collision())
-            .chain(iter::once(self.vehicle_body.collision()));
-
-        let ground = collisions.clone().any(|collision| collision.floor_nor().is_some());
-        let last_airtime = self.airtime;
-        if ground {
-            self.airtime = 0;
-        } else {
-            self.airtime += 1;
-        }
+        self.floor.update(&self.wheels, &self.vehicle_body);
 
         if timer.stage() == Stage::Countdown {
             self.start_boost.update(self.rkg.accelerate(timer.frame_idx()));
@@ -177,51 +169,43 @@ impl Player {
             .as_ref()
             .map(|bike| bike.wheelie.is_wheelieing())
             .unwrap_or(false);
-        self.physics.update_floor_nor(
+        self.physics.update_ups(
             self.stats.vehicle.drift_kind.is_inside(),
-            self.airtime,
-            last_airtime,
+            &self.floor,
             self.drift.has_hop_height(),
-            is_wheelieing,
             self.boost.is_boosting(),
-            collisions.clone(),
+            is_wheelieing,
+            self.surface_props.has_boost_ramp(),
         );
 
-        if self.airtime == 0 && last_airtime != 0 {
+        if self.floor.is_landing() {
             self.jump_pad.end();
         }
 
-        let has_boost_panel = collisions.clone().any(Collision::has_boost_panel);
-        if has_boost_panel {
+        if self.surface_props.has_boost_panel() {
             self.boost.activate(BoostKind::Strong, 60);
             self.floor_factors.activate_invicibility(60);
         }
 
-        self.boost_ramp.try_start(collisions.clone());
+        self.boost_ramp.try_start(self.surface_props.has_boost_ramp());
 
-        self.jump_pad.try_start(&mut self.physics, collisions.clone());
+        self.jump_pad.try_start(&mut self.physics, self.surface_props.jump_pad());
 
-        self.physics.update_dir(
-            self.airtime,
-            last_airtime,
+        self.physics.update_dirs(
+            &self.floor,
             self.floor_factors.rot_factor(),
             &self.drift,
             self.boost_ramp.enabled(),
-            self.jump_pad.enabled()
+            self.jump_pad.enabled(),
         );
 
-        self.sticky_road.update(&mut self.physics, collisions.clone(), kcl);
+        self.sticky_road.update(&mut self.physics, self.surface_props.has_sticky_road(), kcl);
 
-        self.floor_factors.update_factors(
-            &self.stats.common,
-            &self.vehicle_body,
-            &self.wheels,
-            collisions.clone(),
-        );
+        self.floor_factors.update_factors(&self.stats.common, &self.vehicle_body, &self.wheels);
 
         let frame_idx = timer.frame_idx();
         let stick_x = self.rkg.stick_x(frame_idx);
-        self.turn.update(&self.stats.common, self.airtime, stick_x, &self.drift);
+        self.turn.update(&self.stats.common, self.floor.airtime(), stick_x, &self.drift);
 
         let drift_input = self.rkg.drift(frame_idx) && timer.stage() == Stage::Race;
         let last_drift_input = timer
@@ -235,7 +219,7 @@ impl Player {
             drift_input,
             last_drift_input,
             stick_x,
-            self.airtime,
+            self.floor.airtime(),
             &mut self.boost,
             wheelie,
             &mut self.physics,
@@ -245,7 +229,7 @@ impl Player {
             bike.wheelie.update(
                 self.stats.common.base_speed,
                 self.rkg.trick(frame_idx),
-                ground,
+                self.floor.is_airborne(),
                 &self.drift,
                 &mut self.physics,
             );
@@ -280,7 +264,7 @@ impl Player {
             self.rkg.brake(frame_idx),
             last_accelerate,
             last_brake,
-            self.airtime,
+            self.floor.airtime(),
             self.floor_factors.speed_factor(),
             self.drift.is_drifting(),
             &self.boost,
@@ -288,12 +272,12 @@ impl Player {
             self.boost_ramp.enabled(),
             self.jump_pad.speed(),
             is_wheelieing,
-            collisions,
+            &self.surface_props,
             timer,
         );
 
         self.update_standstill_boost_rot(
-            ground,
+            self.floor.is_airborne(),
             self.boost_ramp.enabled(),
             self.jump_pad.enabled(),
             timer,
@@ -304,7 +288,7 @@ impl Player {
 
             bike.lean.update(
                 self.rkg.stick_x(timer.frame_idx()),
-                self.airtime,
+                self.floor.airtime(),
                 self.drift.drift_stick_x(),
                 is_wheelieing,
                 &mut self.physics,
@@ -314,7 +298,7 @@ impl Player {
             self.physics.rot_vec0.x += self.standstill_boost_rot;
 
             let mut norm = 0.0;
-            if ground {
+            if !self.floor.is_airborne() {
                 let mat = self.physics.mat();
                 let front = Mat33::from(mat) * Vec3::FRONT;
                 let front = front.perp_in_plane(self.physics.up, true);
@@ -333,7 +317,7 @@ impl Player {
 
         self.turn.update_rot(
             &self.stats.common,
-            self.airtime,
+            self.floor.airtime(),
             &self.drift,
             self.boost_ramp.enabled(),
             is_wheelieing,
@@ -341,14 +325,14 @@ impl Player {
         );
 
         self.diving_rot *= 0.96;
-        if !ground {
+        if self.floor.is_airborne() {
             let stick_y = self.rkg.stick_y(timer.frame_idx());
             let diving_rot_diff = if timer.stage() != Stage::Race {
                 0.0
-            } else if self.airtime > 50 {
+            } else if self.floor.airtime() > 50 {
                 stick_y
             } else {
-                self.airtime as f32 / 50.0 * stick_y
+                self.floor.airtime() as f32 / 50.0 * stick_y
             };
             self.diving_rot += 0.005 * diving_rot_diff;
             self.physics.rot_vec2.x += self.diving_rot;
@@ -356,10 +340,13 @@ impl Player {
 
         self.physics.update(&self.stats, timer);
 
+        self.surface_props = SurfaceProps::new();
+
         self.vehicle_body.update(
             &self.stats.common,
             self.boost.is_boosting(),
             &mut self.physics,
+            &mut self.surface_props,
             &kcl,
         );
 
@@ -373,6 +360,7 @@ impl Player {
                 &self.stats.common,
                 self.bike.as_ref(),
                 &mut self.physics,
+                &mut self.surface_props,
                 &kcl,
             );
 
@@ -422,14 +410,14 @@ impl Player {
 
     fn update_standstill_boost_rot(
         &mut self,
-        ground: bool,
+        is_airborne: bool,
         boost_ramp_enabled: bool,
         jump_pad_enabled: bool,
         timer: &Timer,
     ) {
         let mut next = 0.0;
         let mut t = 1.0;
-        if ground {
+        if !is_airborne {
             if timer.stage() == Stage::Countdown {
                 next = 0.015 * -self.start_boost.charge;
             } else if !boost_ramp_enabled && !jump_pad_enabled {

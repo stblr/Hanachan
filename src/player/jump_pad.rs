@@ -1,5 +1,5 @@
 use crate::fs::KclJumpPadVariant;
-use crate::player::{Collision, Physics};
+use crate::player::Physics;
 
 #[derive(Clone, Debug)]
 pub struct JumpPad {
@@ -19,16 +19,12 @@ impl JumpPad {
         self.variant.as_ref().map(KclJumpPadVariant::speed)
     }
 
-    pub fn try_start<'a>(
-        &mut self,
-        physics: &mut Physics,
-        collisions: impl Iterator<Item = &'a Collision>,
-    ) {
+    pub fn try_start<'a>(&mut self, physics: &mut Physics, variant: Option<KclJumpPadVariant>) {
         if self.variant.is_some() {
             return;
         }
 
-        let variant = match collisions.filter_map(Collision::jump_pad).last() {
+        let variant = match variant {
             Some(variant) => variant,
             None => return,
         };

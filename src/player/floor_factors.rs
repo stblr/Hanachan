@@ -1,3 +1,4 @@
+use std::iter;
 use std::ops::Add;
 
 use crate::player::{Collision, CommonStats, VehicleBody, Wheel};
@@ -31,10 +32,11 @@ impl FloorFactors {
         stats: &CommonStats,
         vehicle_body: &VehicleBody,
         wheels: &Vec<Wheel>,
-        collisions: impl Iterator<Item = &'a Collision> + Clone,
     ) {
-        let speed_factor_min = collisions
-            .clone()
+        let speed_factor_min = wheels
+            .iter()
+            .map(|wheel| wheel.collision())
+            .chain(iter::once(vehicle_body.collision()))
             .filter_map(Collision::speed_factor)
             .reduce(|sf0, sf1| sf0.min(sf1));
         if self.invicibility > 0 {
@@ -43,7 +45,10 @@ impl FloorFactors {
             self.speed_factor = speed_factor_min;
         }
 
-        let rot_factor_sum = collisions
+        let rot_factor_sum = wheels
+            .iter()
+            .map(|wheel| wheel.collision())
+            .chain(iter::once(vehicle_body.collision()))
             .filter_map(Collision::rot_factor)
             .reduce(Add::add);
         if self.invicibility > 0 {

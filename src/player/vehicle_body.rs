@@ -1,6 +1,6 @@
 use crate::fs::{BspHitbox, Kcl};
 use crate::geom::{Hitbox, Vec3};
-use crate::player::{Collision, CommonStats, Physics};
+use crate::player::{Collision, CommonStats, Physics, SurfaceProps};
 
 #[derive(Clone, Debug)]
 pub struct VehicleBody {
@@ -43,6 +43,7 @@ impl VehicleBody {
         stats: &CommonStats,
         is_boosting: bool,
         physics: &mut Physics,
+        surface_props: &mut SurfaceProps,
         kcl: &Kcl,
     ) {
         let (mut min, mut max) = (Vec3::ZERO, Vec3::ZERO);
@@ -63,7 +64,8 @@ impl VehicleBody {
                     let nor = kcl_collision.movement().normalize();
                     pos_rel = pos_rel + hitbox_pos_rel - bsp_hitbox.radius * nor;
 
-                    self.collision.add(stats, kcl_collision);
+                    self.collision.add(stats, &kcl_collision);
+                    surface_props.add(&kcl_collision, false);
                 }
             }
         }
@@ -76,7 +78,6 @@ impl VehicleBody {
             physics.pos += movement;
 
             self.collision.finalize();
-            self.collision.disable_boost_panels();
 
             let pos_rel = (1.0 / count as f32) * pos_rel;
 
