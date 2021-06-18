@@ -31,6 +31,7 @@ pub struct VehicleStats {
     pub wheel_count: u8,
     pub has_handle: bool,
     pub drift_kind: DriftKind,
+    pub weight_class: WeightClass,
 }
 
 impl Parse for VehicleStats {
@@ -45,12 +46,15 @@ impl Parse for VehicleStats {
 
         let drift_kind = input.take()?;
 
-        input.skip(0x18c - 0x8)?;
+        let weight_class = input.take()?;
+
+        input.skip(0x18c - 0xc)?;
 
         Ok(VehicleStats {
             wheel_count,
             has_handle,
             drift_kind,
+            weight_class,
         })
     }
 }
@@ -86,6 +90,24 @@ impl Parse for DriftKind {
             0 => Ok(DriftKind::KartOutsideDrift),
             1 => Ok(DriftKind::BikeOutsideDrift),
             2 => Ok(DriftKind::BikeInsideDrift),
+            _ => Err(Error {}),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum WeightClass {
+    Light,
+    Medium,
+    Heavy,
+}
+
+impl Parse for WeightClass {
+    fn parse(input: &mut &[u8]) -> Result<WeightClass, Error> {
+        match input.take::<u32>()? {
+            0 => Ok(WeightClass::Light),
+            1 => Ok(WeightClass::Medium),
+            2 => Ok(WeightClass::Heavy),
             _ => Err(Error {}),
         }
     }

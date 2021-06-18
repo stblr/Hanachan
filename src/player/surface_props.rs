@@ -2,7 +2,6 @@ use crate::fs::{KclBoostRampVariant, KclCollision, KclJumpPadVariant};
 
 #[derive(Clone, Debug)]
 pub struct SurfaceProps {
-    has_trickable: bool,
     has_boost_panel: bool,
     has_boost_ramp: bool,
     boost_ramp: Option<KclBoostRampVariant>,
@@ -13,7 +12,6 @@ pub struct SurfaceProps {
 impl SurfaceProps {
     pub fn new() -> SurfaceProps {
         SurfaceProps {
-            has_trickable: false,
             has_boost_panel: false,
             has_boost_ramp: false,
             boost_ramp: None,
@@ -22,12 +20,23 @@ impl SurfaceProps {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.has_boost_panel = false;
+        self.has_boost_ramp = false;
+        self.jump_pad = None;
+        self.has_sticky_road = false;
+    }
+
     pub fn has_boost_panel(&self) -> bool {
         self.has_boost_panel
     }
 
     pub fn has_boost_ramp(&self) -> bool {
         self.has_boost_ramp
+    }
+
+    pub fn boost_ramp(&self) -> Option<KclBoostRampVariant> {
+        self.boost_ramp
     }
 
     pub fn jump_pad(&self) -> Option<KclJumpPadVariant> {
@@ -43,11 +52,7 @@ impl SurfaceProps {
             self.has_sticky_road = true;
         }
 
-        if let Some(surface) = kcl_collision.find_closest(0x20e80fff) {
-            if surface & 0x2000 != 0 {
-                self.has_trickable = true;
-            }
-
+        if let Some(_) = kcl_collision.find_closest(0x20e80fff) {
             if allow_boost_panels && kcl_collision.surface_kinds() & 0x40 != 0 {
                 self.has_boost_panel = true;
             }

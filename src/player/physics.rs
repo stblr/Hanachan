@@ -17,6 +17,7 @@ pub struct Physics {
     pub dir: Vec3,
     pub dir_diff: Vec3,
     pub vel1_dir: Vec3,
+    pub landing_dir: Option<Vec3>,
     pub landing_angle: f32,
     pub pos: Vec3,
     pub normal_acceleration: f32,
@@ -30,8 +31,10 @@ pub struct Physics {
     pub normal_rot_vec: Vec3,
     pub rot_vec0: Vec3,
     pub rot_vec2: Vec3,
-    pub rot0: Quat,
-    pub rot1: Quat,
+    pub rot0: Quat, // TODO rename to main_rot
+    pub non_conserved_special_rot: Quat,
+    pub conserved_special_rot: Quat,
+    pub rot1: Quat, // TODO rename to full_rot
     pub stabilization_factor: f32,
 }
 
@@ -77,6 +80,7 @@ impl Physics {
             dir: Vec3::BACK,
             dir_diff: Vec3::ZERO,
             vel1_dir: Vec3::BACK,
+            landing_dir: None,
             landing_angle: 0.0,
             pos,
             normal_acceleration: 0.0,
@@ -91,6 +95,8 @@ impl Physics {
             rot_vec0: Vec3::ZERO,
             rot_vec2: Vec3::ZERO,
             rot0: Quat::BACK,
+            non_conserved_special_rot: Quat::IDENTITY,
+            conserved_special_rot: Quat::IDENTITY,
             rot1: Quat::BACK,
             stabilization_factor: 0.0,
         }
@@ -109,12 +115,14 @@ impl Physics {
         is_wheelieing: bool,
         has_boost_ramp: bool,
     ) {
+        self.landing_dir = None;
         self.stabilization_factor = 0.1;
         if floor.is_landing() && floor.last_airtime() >= 3 {
             self.up = floor.nor().unwrap();
             self.smoothed_up = self.up;
             let landing_dir = self.dir.perp_in_plane(self.smoothed_up, true);
             self.dir_diff = landing_dir.proj_unit(landing_dir);
+            self.landing_dir = Some(landing_dir);
         } else if has_hop_height {
             self.stabilization_factor = if is_inside_drift { 0.22 } else { 0.5 };
         } else if floor.airtime() > 20 {
@@ -169,8 +177,6 @@ impl Physics {
             return;
         }
 
-        let landing_dir = self.dir.perp_in_plane(self.smoothed_up, true);
-
         let next_dir = drift.hop_dir().unwrap_or_else(|| {
             let right = self.rot0.rotate(Vec3::RIGHT);
             right.cross(self.smoothed_up).normalize()
@@ -196,14 +202,17 @@ impl Physics {
             }
         }
         self.vel1_dir = self.dir.perp_in_plane(self.smoothed_up, true);
+    }
 
-        if floor.is_landing() && floor.last_airtime() >= 3 {
+    pub fn update_landing_angle(&mut self) {
+        if let Some(landing_dir) = self.landing_dir {
             let cross = self.dir.cross(landing_dir);
             let norm = cross.sq_norm().wii_sqrt();
             let dot = self.dir.dot(landing_dir);
             let angle = norm.wii_atan2(dot).abs().to_degrees();
             self.landing_angle += angle * cross.dot(self.smoothed_up).signum();
         }
+
         if self.landing_angle < 0.0 {
             self.landing_angle = (self.landing_angle + 2.0).min(0.0);
         } else {
@@ -289,6 +298,10 @@ impl Physics {
         self.speed1_soft_limit = (self.speed1_soft_limit).min(120.0);
         self.speed1 = self.speed1.min(self.speed1_soft_limit);
 
+        if let Some(jump_pad_speed) = jump_pad_speed {
+            self.speed1 = self.speed1.max(jump_pad_speed);
+        }
+
         let right = self.smoothed_up.cross(self.dir);
         let angle: f32 = if surface_props.has_boost_ramp() {
             4.0
@@ -370,7 +383,11 @@ impl Physics {
             Quat::IDENTITY
         };
 
-        self.rot1 = self.rot0.normalize();
+        let special_rot = self.non_conserved_special_rot * self.conserved_special_rot;
+        self.rot1 = self.rot0 * special_rot;
+        self.rot1 = self.rot1.normalize();
+        self.non_conserved_special_rot = Quat::IDENTITY;
+        self.conserved_special_rot = self.conserved_special_rot.slerp_to(Quat::IDENTITY, 0.1);
     }
 
     fn stabilize(&mut self, stats: &Stats) {

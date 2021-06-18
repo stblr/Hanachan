@@ -4,10 +4,10 @@ Run          | Frames      | Desync reason
 :----------- | :---------: | :-----------------------------------------
 lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 4761 / 4904 | Race end detection.
-lc-tas-0-i   | 1264 / 4299 | Trick start.
-mmm-rta-0-i  | 1569 / 5079 | Ramp collision.
+lc-tas-0-i   | 1265 / 4299 | Stunt trick rotation.
+mmm-rta-0-i  | 1616 / 5079 | Nosediving.
 mmm-rta-0-k  | 5168 / 5311 | Race end detection.
-mmm-tas-0-i  | 1276 / 4880 | Trick start.
+mmm-tas-0-i  | 1277 / 4880 | Stunt trick rotation.
 mg-rta-0-i   | 823 / 6593  | Ramp collision.
 mg-rta-1-i   | 624 / 1772  | Collision with mushroom object.
 mg-rta-2-i   | 820 / 6593  | Ramp collision.
@@ -30,13 +30,13 @@ dksc-tas-0-i | 0 / 6166    | Initial direction.
 wgm-rta-0-i  | 628 / 7183  | Collision related.
 wgm-rta-1-i  | 463 / 2466  | Charging an ssmt.
 wgm-rta-0-k  | 929 / 7501  | Collision related.
-rgv2-rta-0-i | 847 / 3718  | Ramp collision.
+rgv2-rta-0-i | 848 / 3718  | Stunt trick rotation.
 rgv2-rta-1-i | 411 / 3596  | Charging an ssmt.
-rgv2-rta-0-k | 860 / 3718  | Ramp collision.
-rsgb-rta-0-i | 1619 / 5439 | Ramp collision.
+rgv2-rta-0-k | 904 / 3718  | Taildiving.
+rsgb-rta-0-i | 4870 / 5439 | Stunt trick rotation.
 rsgb-rta-0-k | 1117 / 5687 | Collision related.
-rbc3-rta-0-i | 1392 / 7588 | Ramp collision.
-rbc3-rta-2-i | 1391 / 8728 | Ramp collision.
+rbc3-rta-0-i | 1450 / 7588 | Stunt trick rotation.
+rbc3-rta-2-i | 1409 / 8728 | Stunt trick rotation.
 rbc3-rta-2-k | 1424 / 9185 | Wall collision.
 rmc3-rta-0-i | 5080 / 5223 | Race end detection.
 rmc3-rta-0-k | 5147 / 5290 | Race end detection.

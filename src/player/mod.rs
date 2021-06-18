@@ -14,6 +14,7 @@ mod start_boost;
 mod stats;
 mod sticky_road;
 mod surface_props;
+mod trick;
 mod turn;
 mod vehicle_body;
 mod wheel;
@@ -40,8 +41,10 @@ use jump_pad::JumpPad;
 use lean::Lean;
 use physics::Physics;
 use start_boost::StartBoost;
+use stats::WeightClass;
 use sticky_road::StickyRoad;
 use surface_props::SurfaceProps;
+use trick::Trick;
 use turn::Turn;
 use vehicle_body::VehicleBody;
 use wheel::Wheel;
@@ -62,6 +65,7 @@ pub struct Player {
     standstill_boost_rot: f32, // TODO maybe rename
     boost_ramp: BoostRamp,
     jump_pad: JumpPad,
+    trick: Trick,
     bike: Option<Bike>,
     sticky_road: StickyRoad,
     physics: Physics,
@@ -140,6 +144,7 @@ impl Player {
             standstill_boost_rot: 0.0,
             boost_ramp: BoostRamp::new(),
             jump_pad: JumpPad::new(),
+            trick: Trick::new(),
             bike,
             sticky_road: StickyRoad::new(),
             physics,
@@ -157,6 +162,10 @@ impl Player {
         self.physics.rot_vec2 = Vec3::ZERO;
 
         self.floor.update(&self.wheels, &self.vehicle_body);
+
+        if !self.floor.is_airborne() {
+            self.trick.try_end(self.stats.vehicle.drift_kind.is_bike(), &mut self.boost);
+        }
 
         if timer.stage() == Stage::Countdown {
             self.start_boost.update(self.rkg.accelerate(timer.frame_idx()));
@@ -191,6 +200,15 @@ impl Player {
 
         self.jump_pad.try_start(&mut self.physics, self.surface_props.jump_pad());
 
+        self.trick.update_rot(&mut self.physics);
+        let frame_idx = timer.frame_idx();
+        self.trick.update_next(
+            self.rkg.trick(frame_idx),
+            &self.floor,
+            self.boost_ramp.enabled(),
+            self.surface_props.has_boost_ramp(),
+        );
+
         self.physics.update_dirs(
             &self.floor,
             self.floor_factors.rot_factor(),
@@ -199,13 +217,28 @@ impl Player {
             self.jump_pad.enabled(),
         );
 
+        let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);
+        self.trick.try_start(
+            &self.stats,
+            self.jump_pad.enabled(),
+            &mut self.physics,
+            self.surface_props.boost_ramp(),
+            wheelie,
+        );
+
+        self.physics.update_landing_angle();
+
         self.sticky_road.update(&mut self.physics, self.surface_props.has_sticky_road(), kcl);
 
         self.floor_factors.update_factors(&self.stats.common, &self.vehicle_body, &self.wheels);
 
-        let frame_idx = timer.frame_idx();
         let stick_x = self.rkg.stick_x(frame_idx);
-        self.turn.update(&self.stats.common, self.floor.airtime(), stick_x, &self.drift);
+        self.turn.update(
+            &self.stats.common,
+            self.floor.airtime(),
+            stick_x,
+            &self.drift,
+        );
 
         let drift_input = self.rkg.drift(frame_idx) && timer.stage() == Stage::Race;
         let last_drift_input = timer
@@ -326,13 +359,18 @@ impl Player {
 
         self.diving_rot *= 0.96;
         if self.floor.is_airborne() {
-            let stick_y = self.rkg.stick_y(timer.frame_idx());
+            let mut diving_rot_diff = self.rkg.stick_y(timer.frame_idx());
+
+            if self.trick.has_diving_rot_bonus() {
+                diving_rot_diff = (diving_rot_diff + 0.4).min(1.0);
+            }
+
             let diving_rot_diff = if timer.stage() != Stage::Race {
                 0.0
             } else if self.floor.airtime() > 50 {
-                stick_y
+                diving_rot_diff
             } else {
-                self.floor.airtime() as f32 / 50.0 * stick_y
+                self.floor.airtime() as f32 / 50.0 * diving_rot_diff
             };
             self.diving_rot += 0.005 * diving_rot_diff;
             self.physics.rot_vec2.x += self.diving_rot;
@@ -340,7 +378,7 @@ impl Player {
 
         self.physics.update(&self.stats, timer);
 
-        self.surface_props = SurfaceProps::new();
+        self.surface_props.reset();
 
         self.vehicle_body.update(
             &self.stats.common,

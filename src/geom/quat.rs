@@ -20,6 +20,18 @@ impl Quat {
         Quat { x, y, z, w }
     }
 
+    pub fn from_angles(angles: Vec3) -> Quat {
+        let sinh = (0.5 * angles).wii_sin();
+        let cosh = (0.5 * angles).wii_cos();
+
+        Quat {
+            x: cosh.z * cosh.y * sinh.x - sinh.z * sinh.y * cosh.x,
+            y: cosh.z * sinh.y * cosh.x + sinh.z * cosh.y * sinh.x,
+            z: sinh.z * cosh.y * cosh.x - cosh.z * sinh.y * sinh.x,
+            w: cosh.z * cosh.y * cosh.x + sinh.z * sinh.y * sinh.x,
+        }
+    }
+
     pub fn from_vecs(from: Vec3, to: Vec3) -> Quat {
         let s = (2.0 * (from.dot(to) + 1.0)).wii_sqrt();
         if s <= f32::EPSILON {
