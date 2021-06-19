@@ -223,9 +223,20 @@ impl Started {
         self.angle += self.angle_diff;
         self.angle = self.angle.min(self.kind.max_angle());
 
-        // TODO handle stunt trick
         self.rot = match &self.kind {
-            Kind::Stunt => Quat::IDENTITY,
+            Kind::Stunt => {
+                if self.rot_dir == 0.0 {
+                    Quat::IDENTITY
+                } else {
+                    let rot_dir = self.rot_dir;
+                    let a = 20.0_f32.to_radians();
+                    let b = 60.0_f32.to_radians();
+                    let step = 256.0 / 360.0;
+                    let sin = (step * self.angle).wii_sin_inner();
+                    let angles = Vec3::new(-a * sin, rot_dir * -b * sin, rot_dir * a * sin);
+                    Quat::from_angles(angles)
+                }
+            }
             Kind::Flip { axis, .. } => axis.rot(self.rot_dir * self.angle.to_radians()),
         };
     }

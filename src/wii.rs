@@ -3,7 +3,9 @@ use std::f32::consts::PI;
 pub trait F32Ext {
     fn wii_sqrt(self) -> Self;
     fn wii_sin(self) -> Self;
+    fn wii_sin_inner(self) -> Self;
     fn wii_cos(self) -> Self;
+    fn wii_cos_inner(self) -> Self;
     fn wii_atan2(self, other: Self) -> Self;
 }
 
@@ -79,7 +81,11 @@ impl F32Ext for f32 {
 
     fn wii_sin(self) -> f32 {
         let step = 256.0 / (2.0 * PI);
-        let mut f_idx = (self * step).abs();
+        (self * step).wii_sin_inner()
+    }
+
+    fn wii_sin_inner(self) -> f32 {
+        let mut f_idx = self.abs();
         while f_idx > 65536.0 {
             f_idx -= 65536.0;
         }
@@ -89,7 +95,11 @@ impl F32Ext for f32 {
 
     fn wii_cos(self) -> f32 {
         let step = 256.0 / (2.0 * PI);
-        let mut f_idx = (self * step).abs();
+        (self * step).wii_cos_inner()
+    }
+
+    fn wii_cos_inner(self) -> f32 {
+        let mut f_idx = self.abs();
         while f_idx > 65536.0 {
             f_idx -= 65536.0;
         }
