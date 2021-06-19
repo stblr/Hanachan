@@ -35,7 +35,7 @@ rgv2-rta-1-i | 411 / 3596  | Charging an ssmt.
 rgv2-rta-0-k | 915 / 3718  | Collision related.
 rsgb-rta-0-i | 5296 / 5439 | Race end detection.
 rsgb-rta-0-k | 1117 / 5687 | Collision related.
-rbc3-rta-0-i | 1582 / 7588 | Speed related.
+rbc3-rta-0-i | 1586 / 7588 | Wall collision.
 rbc3-rta-2-i | 1409 / 8728 | Stunt trick rotation.
 rbc3-rta-2-k | 1424 / 9185 | Wall collision.
 rmc3-rta-0-i | 5080 / 5223 | Race end detection.

@@ -299,8 +299,10 @@ impl Physics {
         let wheelie_bonus = if is_wheelieing { 0.15 } else { 0.0 };
         let mut next_soft_limit = (boost_factor + wheelie_bonus) * floor_speed_factor * base_speed;
         if let Some(boost_limit) = boost.limit() {
-            let boost_limit = boost_limit * floor_speed_factor;
-            next_soft_limit = next_soft_limit.max(boost_limit);
+            if jump_pad_speed.is_none() {
+                let boost_limit = boost_limit * floor_speed_factor;
+                next_soft_limit = next_soft_limit.max(boost_limit);
+            }
         }
         if boost_ramp_enabled {
             next_soft_limit = next_soft_limit.max(100.0);
