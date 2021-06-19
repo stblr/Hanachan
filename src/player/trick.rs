@@ -28,7 +28,7 @@ impl Trick {
     }
 
     pub fn has_diving_rot_bonus(&self) -> bool {
-        self.has_diving_rot_bonus
+        self.has_diving_rot_bonus && self.is_tricking()
     }
 
     pub fn is_tricking(&self) -> bool {

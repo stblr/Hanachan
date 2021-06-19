@@ -4,10 +4,10 @@ Run          | Frames      | Desync reason
 :----------- | :---------: | :-----------------------------------------
 lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 4761 / 4904 | Race end detection.
-lc-tas-0-i   | 1340 / 4299 | Rotation related.
+lc-tas-0-i   | 1982 / 4299 | Wrong y component of vel0 on sg end.
 mmm-rta-0-i  | 4936 / 5079 | Race end detection.
 mmm-rta-0-k  | 5168 / 5311 | Race end detection.
-mmm-tas-0-i  | 1329 / 4880 | Rotation related.
+mmm-tas-0-i  | 1550 / 4880 | Rotation related.
 mg-rta-0-i   | 823 / 6593  | Ramp collision.
 mg-rta-1-i   | 624 / 1772  | Collision with mushroom object.
 mg-rta-2-i   | 820 / 6593  | Ramp collision.
@@ -33,9 +33,9 @@ wgm-rta-0-k  | 929 / 7501  | Collision related.
 rgv2-rta-0-i | 1179 / 3718 | Collision related.
 rgv2-rta-1-i | 411 / 3596  | Charging an ssmt.
 rgv2-rta-0-k | 915 / 3718  | Collision related.
-rsgb-rta-0-i | 5002 / 5439 | Rotation related.
+rsgb-rta-0-i | 5296 / 5439 | Race end detection.
 rsgb-rta-0-k | 1117 / 5687 | Collision related.
-rbc3-rta-0-i | 1478 / 7588 | Rotation related.
+rbc3-rta-0-i | 1511 / 7588 | Collision related.
 rbc3-rta-2-i | 1409 / 8728 | Stunt trick rotation.
 rbc3-rta-2-k | 1424 / 9185 | Wall collision.
 rmc3-rta-0-i | 5080 / 5223 | Race end detection.
