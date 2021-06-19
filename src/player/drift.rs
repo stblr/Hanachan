@@ -185,7 +185,7 @@ impl Drift {
         physics.vel0.y = 10.0;
         physics.normal_acceleration = 0.0;
 
-        self.state = State::Hop(HopState::new(physics.rot0));
+        self.state = State::Hop(HopState::new(physics));
     }
 
     fn start_drift(&mut self, hop_stick_x: f32, stats: &Stats, physics: &Physics) {
@@ -234,17 +234,19 @@ struct HopState {
     stick_x: Option<f32>,
     pos_y: f32,
     vel_y: f32,
+    gravity: f32,
 }
 
 impl HopState {
-    fn new(rot0: Quat) -> HopState {
+    fn new(physics: &Physics) -> HopState {
         HopState {
             frame: 0,
-            dir: rot0.rotate(Vec3::FRONT),
-            up: rot0.rotate(Vec3::UP),
+            dir: physics.rot0.rotate(Vec3::FRONT),
+            up: physics.rot0.rotate(Vec3::UP),
             stick_x: None,
             pos_y: 0.0,
             vel_y: 10.0,
+            gravity: physics.gravity,
         }
     }
 
@@ -263,8 +265,7 @@ impl HopState {
     fn update_physics(&mut self) {
         let drag_factor = 0.998;
         self.vel_y *= drag_factor;
-        let gravity = -1.3;
-        self.vel_y += gravity;
+        self.vel_y += self.gravity;
 
         self.pos_y += self.vel_y;
 
