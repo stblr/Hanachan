@@ -362,6 +362,7 @@ impl Player {
             self.floor.airtime(),
             &self.drift,
             self.boost_ramp.enabled(),
+            self.trick.boost_ramp_enabled(),
             is_wheelieing,
             &mut self.physics,
         );

@@ -23,6 +23,10 @@ impl Trick {
         }
     }
 
+    pub fn boost_ramp_enabled(&self) -> bool {
+        self.boost_ramp_enabled
+    }
+
     pub fn has_diving_rot_bonus(&self) -> bool {
         self.has_diving_rot_bonus
     }

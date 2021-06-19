@@ -47,6 +47,7 @@ impl Turn {
         airtime: u32,
         drift: &Drift,
         boost_ramp_enabled: bool,
+        trick_boost_ramp_enabled: bool,
         is_wheelieing: bool,
         physics: &mut Physics,
     ) {
@@ -78,7 +79,7 @@ impl Turn {
             _ => 0.0,
         };
 
-        if airtime > 0 && boost_ramp_enabled {
+        if airtime > 0 && boost_ramp_enabled && trick_boost_ramp_enabled {
             rot = 0.0;
         }
 

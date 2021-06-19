@@ -5,7 +5,7 @@ Run          | Frames      | Desync reason
 lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 4761 / 4904 | Race end detection.
 lc-tas-0-i   | 1340 / 4299 | Rotation related.
-mmm-rta-0-i  | 4586 / 5079 | Turn rotation.
+mmm-rta-0-i  | 4658 / 5079 | Collision related.
 mmm-rta-0-k  | 5168 / 5311 | Race end detection.
 mmm-tas-0-i  | 1291 / 4880 | Collision related.
 mg-rta-0-i   | 823 / 6593  | Ramp collision.
