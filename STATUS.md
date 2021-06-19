@@ -5,9 +5,9 @@ Run          | Frames      | Desync reason
 lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 4761 / 4904 | Race end detection.
 lc-tas-0-i   | 1340 / 4299 | Rotation related.
-mmm-rta-0-i  | 4658 / 5079 | Collision related.
+mmm-rta-0-i  | 4936 / 5079 | Race end detection.
 mmm-rta-0-k  | 5168 / 5311 | Race end detection.
-mmm-tas-0-i  | 1291 / 4880 | Collision related.
+mmm-tas-0-i  | 1329 / 4880 | Rotation related.
 mg-rta-0-i   | 823 / 6593  | Ramp collision.
 mg-rta-1-i   | 624 / 1772  | Collision with mushroom object.
 mg-rta-2-i   | 820 / 6593  | Ramp collision.
@@ -19,7 +19,7 @@ tf-tas-0-i   | 737 / 6306  | Conveyor speed (kcl + object).
 mc-rta-0-i   | 1222 / 5371 | Ramp collision.
 mc-rta-1-i   | 411 / 3415  | Charging an ssmt.
 mc-rta-0-k   | 5526 / 5669 | Race end detection.
-mc-tas-0-i   | 907 / 5229  | Wrong direction when interacting with the edge of the road.
+mc-tas-0-i   | 1201 / 5229 | Collision related.
 cm-rta-0-i   | 640 / 6692  | Escalator speed (kcl + object).
 cm-rta-1-i   | 178 / 2441  | Collision related.
 cm-rta-2-i   | 637 / 7482  | Escalator speed (kcl + object).

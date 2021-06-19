@@ -432,7 +432,12 @@ impl Player {
         }
 
         for wheel in &mut self.wheels {
-            wheel.apply_suspension(self.bike.as_ref(), &mut self.physics, vehicle_movement);
+            wheel.apply_suspension(
+                self.stats.vehicle.max_normal_acceleration,
+                self.bike.as_ref(),
+                &mut self.physics,
+                vehicle_movement,
+            );
         }
 
         self.drift.update_hop_physics();

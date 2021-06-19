@@ -32,6 +32,7 @@ pub struct VehicleStats {
     pub has_handle: bool,
     pub drift_kind: DriftKind,
     pub weight_class: WeightClass,
+    pub max_normal_acceleration: f32,
 }
 
 impl Parse for VehicleStats {
@@ -48,13 +49,18 @@ impl Parse for VehicleStats {
 
         let weight_class = input.take()?;
 
-        input.skip(0x18c - 0xc)?;
+        input.skip(0x180 - 0xc)?;
+
+        let max_normal_acceleration = input.take()?;
+
+        input.skip(0x18c - 0x184)?;
 
         Ok(VehicleStats {
             wheel_count,
             has_handle,
             drift_kind,
             weight_class,
+            max_normal_acceleration,
         })
     }
 }
