@@ -114,6 +114,8 @@ impl Trick {
 
     pub fn update_rot(&mut self, physics: &mut Physics) {
         if let State::Started(started) = &mut self.state {
+            started.cooldown = started.cooldown.saturating_sub(1);
+
             started.update_rot();
 
             physics.non_conserved_special_rot = physics.non_conserved_special_rot * started.rot;
@@ -125,6 +127,10 @@ impl Trick {
             State::Started(started) => started,
             _ => return,
         };
+
+        if started.cooldown > 0 {
+            return;
+        }
 
         physics.conserved_special_rot = physics.conserved_special_rot * started.rot;
 
@@ -174,6 +180,7 @@ struct Started {
     angle_diff_mul: f32,
     rot_dir: f32,
     rot: Quat,
+    cooldown: u8,
 }
 
 impl Started {
@@ -223,6 +230,7 @@ impl Started {
             angle_diff_mul: 1.0,
             rot_dir,
             rot: Quat::IDENTITY,
+            cooldown: 5,
         }
     }
 
