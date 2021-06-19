@@ -206,8 +206,8 @@ impl Started {
         let kind = Kind::Flip { is_double, axis };
 
         let rot_dir = match input {
-            RkgTrick::Up | RkgTrick::Left => 1.0,
-            RkgTrick::Down | RkgTrick::Right => -1.0,
+            RkgTrick::Down | RkgTrick::Left => 1.0,
+            RkgTrick::Up | RkgTrick::Right => -1.0,
         };
 
         Started::new_inner(kind, rot_dir)
