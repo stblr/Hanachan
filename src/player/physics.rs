@@ -170,10 +170,19 @@ impl Physics {
         drift: &Drift,
         boost_ramp_enabled: bool,
         jump_pad_enabled: bool,
+        is_tricking: bool,
     ) {
-        let airtime = floor.airtime();
-        if (airtime > 0 && boost_ramp_enabled) || (airtime > 5 || jump_pad_enabled) {
-            self.vel1_dir = self.dir;
+        self.vel1_dir = self.dir;
+
+        if floor.airtime() > 0 && boost_ramp_enabled {
+            return;
+        }
+
+        if floor.airtime() > 5 || jump_pad_enabled {
+            return;
+        }
+
+        if is_tricking {
             return;
         }
 

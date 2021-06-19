@@ -4,7 +4,7 @@ Run          | Frames      | Desync reason
 :----------- | :---------: | :-----------------------------------------
 lc-rta-0-i   | 4534 / 4677 | Race end detection.
 lc-rta-0-k   | 4761 / 4904 | Race end detection.
-lc-tas-0-i   | 1265 / 4299 | Stunt trick rotation.
+lc-tas-0-i   | 1316 / 4299 | Nosediving.
 mmm-rta-0-i  | 1616 / 5079 | Nosediving.
 mmm-rta-0-k  | 5168 / 5311 | Race end detection.
 mmm-tas-0-i  | 1290 / 4880 | Trick end rotation.
@@ -30,7 +30,7 @@ dksc-tas-0-i | 0 / 6166    | Initial direction.
 wgm-rta-0-i  | 628 / 7183  | Collision related.
 wgm-rta-1-i  | 463 / 2466  | Charging an ssmt.
 wgm-rta-0-k  | 929 / 7501  | Collision related.
-rgv2-rta-0-i | 848 / 3718  | Stunt trick rotation.
+rgv2-rta-0-i | 894 / 3718  | Taildiving.
 rgv2-rta-1-i | 411 / 3596  | Charging an ssmt.
 rgv2-rta-0-k | 904 / 3718  | Taildiving.
 rsgb-rta-0-i | 4889 / 5439 | Trick end rotation.

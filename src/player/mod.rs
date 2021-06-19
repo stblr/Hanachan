@@ -215,6 +215,7 @@ impl Player {
             &self.drift,
             self.boost_ramp.enabled(),
             self.jump_pad.enabled(),
+            self.trick.is_tricking(),
         );
 
         let wheelie = self.bike.as_mut().map(|bike| &mut bike.wheelie);

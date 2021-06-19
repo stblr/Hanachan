@@ -27,6 +27,10 @@ impl Trick {
         self.has_diving_rot_bonus
     }
 
+    pub fn is_tricking(&self) -> bool {
+        self.state.is_started()
+    }
+
     pub fn update_next(
         &mut self,
         input: Option<RkgTrick>,
@@ -148,6 +152,13 @@ impl State {
     pub fn is_ready(&self) -> bool {
         match self {
             State::Ready => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_started(&self) -> bool {
+        match self {
+            State::Started { .. } => true,
             _ => false,
         }
     }
