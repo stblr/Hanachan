@@ -380,6 +380,7 @@ impl Player {
 
         self.vehicle_body.update(
             &self.stats.common,
+            self.floor.airtime(),
             self.boost.is_boosting(),
             &mut self.physics,
             &mut self.surface_props,
@@ -420,7 +421,13 @@ impl Player {
             let pos_rel = (1.0 / count as f32) * pos_rel;
             let vel = (1.0 / count as f32) * vel;
             let floor_nor = floor_nor.normalize();
-            self.physics.apply_rigid_body_motion(self.boost.is_boosting(), pos_rel, vel, floor_nor);
+            self.physics.apply_rigid_body_motion(
+                self.floor.airtime(),
+                self.boost.is_boosting(),
+                pos_rel,
+                vel,
+                floor_nor,
+            );
             self.vehicle_body.insert_floor_nor(floor_nor);
         }
 

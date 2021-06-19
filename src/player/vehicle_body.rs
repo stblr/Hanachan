@@ -41,6 +41,7 @@ impl VehicleBody {
     pub fn update(
         &mut self,
         stats: &CommonStats,
+        airtime: u32,
         is_boosting: bool,
         physics: &mut Physics,
         surface_props: &mut SurfaceProps,
@@ -90,7 +91,7 @@ impl VehicleBody {
             }
 
             if let Some(floor_nor) = self.collision.floor_nor() {
-                physics.apply_rigid_body_motion(is_boosting, pos_rel, vel, floor_nor);
+                physics.apply_rigid_body_motion(airtime, is_boosting, pos_rel, vel, floor_nor);
             }
         }
     }

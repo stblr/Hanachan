@@ -434,8 +434,9 @@ impl Physics {
 
     pub fn apply_rigid_body_motion(
         &mut self,
+        airtime: u32,
         is_boosting: bool,
-        pos_rel: Vec3,
+        mut pos_rel: Vec3,
         vel: Vec3,
         floor_nor: Vec3,
     ) {
@@ -443,6 +444,11 @@ impl Physics {
         let dot = vel.dot(floor_nor);
         if dot >= 0.0 {
             return;
+        }
+
+        if airtime > 20 && !is_boosting && self.vel.y < -50.0 {
+            pos_rel.x = 0.0;
+            pos_rel.z = 0.0;
         }
 
         let mat = Mat34::from_quat_and_pos(self.rot0, Vec3::ZERO);
