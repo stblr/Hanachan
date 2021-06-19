@@ -120,11 +120,13 @@ impl Trick {
         }
     }
 
-    pub fn try_end(&mut self, is_bike: bool, boost: &mut Boost) {
+    pub fn try_end(&mut self, is_bike: bool, boost: &mut Boost, physics: &mut Physics) {
         let started = match &self.state {
             State::Started(started) => started,
             _ => return,
         };
+
+        physics.conserved_special_rot = physics.conserved_special_rot * started.rot;
 
         boost.activate(BoostKind::Medium, started.kind.boost_duration(is_bike));
 

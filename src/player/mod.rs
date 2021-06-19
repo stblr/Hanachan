@@ -166,7 +166,11 @@ impl Player {
         self.floor.update(&self.wheels, &self.vehicle_body);
 
         if !self.floor.is_airborne() {
-            self.trick.try_end(self.stats.vehicle.drift_kind.is_bike(), &mut self.boost);
+            self.trick.try_end(
+                self.stats.vehicle.drift_kind.is_bike(),
+                &mut self.boost,
+                &mut self.physics,
+            );
         }
 
         self.physics.gravity = -1.3;
