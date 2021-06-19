@@ -3,12 +3,17 @@ use crate::player::Physics;
 
 #[derive(Clone, Debug)]
 pub struct JumpPad {
+    applied_dir: bool,
     variant: Option<KclJumpPadVariant>,
 }
 
 impl JumpPad {
     pub fn new() -> JumpPad {
-        JumpPad { variant: None }
+        JumpPad { applied_dir: false, variant: None }
+    }
+
+    pub fn applied_dir(&self) -> bool {
+        self.applied_dir
     }
 
     pub fn enabled(&self) -> bool {
@@ -20,6 +25,8 @@ impl JumpPad {
     }
 
     pub fn try_start<'a>(&mut self, physics: &mut Physics, variant: Option<KclJumpPadVariant>) {
+        self.applied_dir = false;
+
         if self.variant.is_some() {
             return;
         }
@@ -39,6 +46,8 @@ impl JumpPad {
         physics.speed1 *= physics.dir.dot(prev_dir);
 
         physics.speed1 = physics.speed1.max(variant.speed());
+
+        self.applied_dir = true;
 
         self.variant = Some(variant);
     }

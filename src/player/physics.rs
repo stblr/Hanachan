@@ -436,6 +436,7 @@ impl Physics {
         &mut self,
         airtime: u32,
         is_boosting: bool,
+        jump_pad_applied_dir: bool,
         mut pos_rel: Vec3,
         vel: Vec3,
         floor_nor: Vec3,
@@ -463,11 +464,14 @@ impl Physics {
         let other_val = val * vel.dot(cross) / dot;
         let other_val = other_val.signum() * other_val.abs().min(0.01 * val);
         let sum = val * floor_nor + other_val * cross;
-        if self.vel1.y > 0.0 && self.vel0.y + self.vel1.y < 0.0 {
+        if !jump_pad_applied_dir && self.vel1.y > 0.0 && self.vel0.y + self.vel1.y < 0.0 {
             self.vel0.y += self.vel1.y;
         }
         let last_vel0_y = self.vel0.y;
         self.vel0 += sum;
+        if jump_pad_applied_dir {
+            self.vel0.y = last_vel0_y;
+        }
         if last_vel0_y < 0.0 && self.vel0.y > 0.0 && self.vel0.y < 10.0 {
             self.vel0.y = 0.0;
         }

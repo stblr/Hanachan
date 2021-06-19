@@ -382,6 +382,7 @@ impl Player {
             &self.stats.common,
             self.floor.airtime(),
             self.boost.is_boosting(),
+            self.jump_pad.applied_dir(),
             &mut self.physics,
             &mut self.surface_props,
             &kcl,
@@ -424,6 +425,7 @@ impl Player {
             self.physics.apply_rigid_body_motion(
                 self.floor.airtime(),
                 self.boost.is_boosting(),
+                self.jump_pad.applied_dir(),
                 pos_rel,
                 vel,
                 floor_nor,
@@ -434,6 +436,7 @@ impl Player {
         for wheel in &mut self.wheels {
             wheel.apply_suspension(
                 self.stats.vehicle.max_normal_acceleration,
+                self.jump_pad.applied_dir(),
                 self.bike.as_ref(),
                 &mut self.physics,
                 vehicle_movement,

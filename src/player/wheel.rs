@@ -106,6 +106,7 @@ impl Wheel {
     pub fn apply_suspension(
         &mut self,
         max_normal_acceleration: f32,
+        jump_pad_applied_dir: bool,
         bike: Option<&Bike>,
         physics: &mut Physics,
         vehicle_movement: Vec3,
@@ -125,7 +126,7 @@ impl Wheel {
             let speed_acceleration = -bsp_wheel.speed_suspension * speed;
             let acceleration = (dist_acceleration + speed_acceleration) * self.axis;
 
-            if physics.vel0.y <= 5.0 {
+            if !jump_pad_applied_dir && physics.vel0.y <= 5.0 {
                 let normal_acceleration = Vec3::new(acceleration.x, 0.0, acceleration.z);
                 let normal_acceleration = normal_acceleration.proj_unit(floor_nor).y;
                 let normal_acceleration = acceleration.y + normal_acceleration;
