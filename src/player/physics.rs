@@ -20,6 +20,7 @@ pub struct Physics {
     pub landing_dir: Option<Vec3>,
     pub landing_angle: f32,
     pub pos: Vec3,
+    pub gravity: f32,
     pub normal_acceleration: f32,
     pub vel0: Vec3,
     pub vel1: Vec3,
@@ -83,6 +84,7 @@ impl Physics {
             landing_dir: None,
             landing_angle: 0.0,
             pos,
+            gravity: -1.3,
             normal_acceleration: 0.0,
             vel0: Vec3::ZERO,
             vel1: Vec3::ZERO,
@@ -345,7 +347,7 @@ impl Physics {
                 self.vel0.z = 0.0;
             }
         }
-        self.vel0.y += self.normal_acceleration - 1.3;
+        self.vel0.y += self.normal_acceleration + self.gravity;
         self.normal_acceleration = 0.0;
         self.vel0 = 0.998 * self.vel0;
 

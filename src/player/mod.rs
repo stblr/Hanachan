@@ -2,6 +2,7 @@ mod bike;
 mod boost;
 mod boost_ramp;
 mod collision;
+mod dive;
 mod drift;
 mod floor;
 mod floor_factors;
@@ -34,6 +35,7 @@ use bike::Bike;
 use boost::{Boost, Kind as BoostKind};
 use boost_ramp::BoostRamp;
 use collision::Collision;
+use dive::Dive;
 use drift::Drift;
 use floor::Floor;
 use floor_factors::FloorFactors;
@@ -57,10 +59,10 @@ pub struct Player {
     floor: Floor,
     floor_factors: FloorFactors,
     start_boost: StartBoost,
+    dive: Dive,
     drift: Drift,
     boost: Boost,
     turn: Turn,
-    diving_rot: f32,
     mushroom_boost: u16,
     standstill_boost_rot: f32, // TODO maybe rename
     boost_ramp: BoostRamp,
@@ -136,10 +138,10 @@ impl Player {
             floor: Floor::new(),
             floor_factors: FloorFactors::new(),
             start_boost: StartBoost::new(),
+            dive: Dive::new(),
             drift,
             boost: Boost::new(),
             turn,
-            diving_rot: 0.0,
             mushroom_boost: 0,
             standstill_boost_rot: 0.0,
             boost_ramp: BoostRamp::new(),
@@ -166,6 +168,8 @@ impl Player {
         if !self.floor.is_airborne() {
             self.trick.try_end(self.stats.vehicle.drift_kind.is_bike(), &mut self.boost);
         }
+
+        self.physics.gravity = -1.3;
 
         if timer.stage() == Stage::Countdown {
             self.start_boost.update(self.rkg.accelerate(timer.frame_idx()));
@@ -358,24 +362,12 @@ impl Player {
             &mut self.physics,
         );
 
-        self.diving_rot *= 0.96;
-        if self.floor.is_airborne() {
-            let mut diving_rot_diff = self.rkg.stick_y(timer.frame_idx());
-
-            if self.trick.has_diving_rot_bonus() {
-                diving_rot_diff = (diving_rot_diff + 0.4).min(1.0);
-            }
-
-            let diving_rot_diff = if timer.stage() != Stage::Race {
-                0.0
-            } else if self.floor.airtime() > 50 {
-                diving_rot_diff
-            } else {
-                self.floor.airtime() as f32 / 50.0 * diving_rot_diff
-            };
-            self.diving_rot += 0.005 * diving_rot_diff;
-            self.physics.rot_vec2.x += self.diving_rot;
-        }
+        let stick_y = if timer.stage() != Stage::Race {
+            0.0
+        } else {
+            self.rkg.stick_y(timer.frame_idx())
+        };
+        self.dive.update(stick_y, &self.floor, self.trick.has_diving_rot_bonus(), &mut self.physics);
 
         self.physics.update(&self.stats, timer);
 
