@@ -39,8 +39,7 @@ impl Tracks {
                         let mut path = path.clone();
                         path.push(id.filename());
                         path.set_extension("szs");
-                        // TODO use insert
-                        Ok(track.get_or_insert(Track::load(path)?))
+                        Ok(track.insert(Track::load(path)?))
                     }
                 }
             }
